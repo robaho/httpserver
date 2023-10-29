@@ -6,7 +6,7 @@ It adds websocket support using modified source from nanohttpd.
 
 All async functionality has been removed. Most synchronized blocks were removed in favor of other Java concurrency concepts.
 
-The end result is an implementation that supports adoption of Virtual Threads available in JDK 21.
+The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
 
 ## using
 
