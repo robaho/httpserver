@@ -1,0 +1,130 @@
+plugins {
+    id 'java-library' 
+}
+
+repositories {
+    mavenCentral() 
+}
+
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs += "--enable-preview"
+}
+
+tasks.withType(Test) {
+    jvmArgs += "--enable-preview"
+    jvmArgs += "--add-opens=jdk.httpserver/com.sun.net.httpserver=ALL-UNNAMED"
+    systemProperty("java.util.logging.config.file","logging.properties")
+    systemProperty("com.sun.net.httpserver.HttpServerProvider","robaho.net.httpserver.DefaultHttpServerProvider")
+    // systemProperty("javax.net.debug","ssl:handshake:verbose:keymanager:trustmanager")
+}
+
+tasks.withType(JavaExec) {
+    jvmArgs += "--enable-preview"
+    systemProperty("java.util.logging.config.file","logging.properties")
+    systemProperty("com.sun.net.httpserver.HttpServerProvider","robaho.net.httpserver.DefaultHttpServerProvider")
+}
+
+tasks.withType(JavaExec).configureEach {
+   javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+}
+
+dependencies {
+    testImplementation 'org.testng:testng:7.8.0'
+}
+
+configurations {
+    testMainsCompile.extendsFrom testCompile
+    testMainsRuntime.extendsFrom testMainsCompile
+}
+
+test {
+    useTestNG()
+    testLogging {
+        events "passed", "skipped", "failed", "standard_out", "standard_error"
+        showStandardStreams = true
+    }
+}
+
+sourceSets {
+    test {
+        java {
+            srcDirs = [ 
+            'src/test/extras', 
+            'src/test/java', 
+            'src/test/java_default/bugs', 
+            'src/test/java_default/HttpExchange'
+            ]
+        }
+    }
+    testMains {
+      java {
+        srcDirs = ['src/test/test_mains']
+        compileClasspath = test.output + main.output + configurations.testMainsCompile
+        runtimeClasspath = output + compileClasspath + configurations.testMainsRuntime
+      }
+      resources {
+            srcDirs = [ 'src/test/resources' ]
+      }
+    }
+}
+
+task testMainsTest(type: Test) { 
+    dependsOn testMainsClasses
+    doLast {
+        def files = sourceSets.testMains.allJava
+        def is = System.in
+        files.each { file ->
+            def fileWithoutExt = file.name.take(file.name.lastIndexOf('.'))
+            def props = systemProperties
+            println " *** $fileWithoutExt ***"
+            javaexec {
+                classpath sourceSets.testMains.runtimeClasspath
+                main fileWithoutExt
+                systemProperties props
+                standardInput is
+            }
+        }
+    }
+}
+
+/** used for developmet to run a single test */
+task testSingleTest(type: Test) { 
+    dependsOn testMainsClasses
+    doLast {
+        def testname = "Test1"
+        println jvmArgs
+        println systemProperties
+        def props = systemProperties
+        javaexec {
+            classpath sourceSets.testMains.runtimeClasspath
+            main testname
+            systemProperties = props
+            // debug true
+        }
+    }
+}
+
+task runSimpleFileServer(type: Test) { 
+    dependsOn testClasses
+    doLast {
+        def props = systemProperties
+        props.put("-Xshare","off")
+        mkdir 'fileserver'
+        javaexec {
+            classpath sourceSets.test.runtimeClasspath
+            main "SimpleFileServer"
+            systemProperties = props
+            args = ['fileserver','8888','fileserver/logfile.txt']
+            // debug true
+        }
+    }
+}
