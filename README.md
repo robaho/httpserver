@@ -1,6 +1,6 @@
 # httpserver
 
-A simple http server designed for embedding based on the JDK sun.net.httpserver.
+A simple http server designed for embedding based on the JDK sun.net.httpserver - only a 90kb jar.
 
 It adds websocket support using modified source from nanohttpd.
 
