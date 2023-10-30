@@ -18,6 +18,8 @@ Set the default HttpServer provider when starting the jvm:
 
 <code>-Dcom.sun.net.httpserver.HttpServerProvider=robaho.net.httpserver.DefaultHttpServerProvider</code>
 
+or instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
+
 ## future work
 
 There is no http2 support.
