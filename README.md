@@ -10,7 +10,7 @@ The end result is an implementation that easily integrates with Virtual Threads 
 
 ## testing
 
-Nearly all of the tests were migrated from the JDK, so the current version is believed to be highly compliant.
+Nearly all of the tests were migrated from the JDK so the current version should be highly compliant.
 
 ## using
 
