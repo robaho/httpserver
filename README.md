@@ -8,6 +8,14 @@ All async functionality has been removed. Most synchronized blocks were removed 
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
 
+## background
+
+The JDK httpserver has no support for connection upgrades, so it is not possible to add websocket support.
+
+Additionally, the code still has a lot of async - e.g. using SSLEngine to provide SSL support - which makes it more difficult to understand and enhance.
+
+The streams based processing that a thread per connection allows simplifies the code substantially.
+
 ## testing
 
 Nearly all of the tests were migrated from the JDK so the current version should be highly compliant.
