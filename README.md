@@ -8,7 +8,7 @@ All async functionality has been removed. Most synchronized blocks were removed 
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
 
-## testig
+## testing
 
 Nearly all of the tests were migrated from the JDK, so the current version is believed to be highly compliant.
 
