@@ -14,7 +14,7 @@ The JDK httpserver has no support for connection upgrades, so it is not possible
 
 Additionally, the code still has a lot of async - e.g. using SSLEngine to provide SSL support - which makes it more difficult to understand and enhance.
 
-The streams based processing that a thread per connection allows simplifies the code substantially.
+The streams based processing offered by a thread per connection design implifies the code substantially.
 
 ## testing
 
