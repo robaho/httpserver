@@ -72,7 +72,7 @@ public class SimpleFileServer {
         c1.getFilters().add(new LogFilter(new File(logfile)));
 
         HttpContext c2 = server.createContext("/devnull", h2);
-        c1.getFilters().add(new LogFilter(new File(logfile)));
+        c2.getFilters().add(new LogFilter(new File(logfile)));
 
         server.setExecutor(Executors.newCachedThreadPool());
         server.start();
