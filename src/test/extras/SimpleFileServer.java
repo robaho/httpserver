@@ -85,7 +85,7 @@ public class SimpleFileServer {
             QueryParameters qp = QueryParameters.decode(ContentEncoding.encoding(exchange.getRequestHeaders()), exchange.getRequestURI().getQuery());
             long size = Long.parseLong(qp.getFirst("size"));
             byte[] buffer = new byte[1024 * 1024];
-            exchange.getRequestHeaders().set("content-type", "application/octet-stream");
+            exchange.getResponseHeaders().set("content-type", "application/octet-stream");
             exchange.sendResponseHeaders(200, size);
             OutputStream os = exchange.getResponseBody();
             while (size > 0) {
