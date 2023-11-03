@@ -60,7 +60,8 @@ public class SimpleFileServer {
         String rootDir = args[0];
         int port = Integer.parseInt(args[1]);
         String logfile = args[2];
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 200);
+        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         HttpHandler h = new FileServerHandler(rootDir);
         HttpHandler h1 = new EchoHandler();
         HttpHandler h2 = new DevNullHandler();
