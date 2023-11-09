@@ -117,7 +117,6 @@ task runSimpleFileServer(type: Test) {
     dependsOn testClasses
     doLast {
         def props = systemProperties
-        props.put("-Xshare","off")
         mkdir 'fileserver'
         javaexec {
             classpath sourceSets.test.runtimeClasspath

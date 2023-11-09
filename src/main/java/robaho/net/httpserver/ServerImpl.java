@@ -293,10 +293,10 @@ class ServerImpl {
                         // we've hit max limit of current open connections, so we go
                         // ahead and close this connection without processing it
                         try {
+                            logger.log(Level.WARNING, "closing accepted connection due to too many connections");
                             s.close();
                         } catch (IOException ignore) {
                         }
-                        // move on to next selected key
                         continue;
                     }
 
@@ -333,8 +333,6 @@ class ServerImpl {
             }
         }
     }
-
-    static boolean debug = ServerConfig.debugEnabled();
 
     Logger getLogger() {
         return logger;
@@ -656,11 +654,14 @@ class ServerImpl {
 
             for (var c : allConnections) {
                 if (currentTime - c.lastActivityTime >= IDLE_INTERVAL && !c.inRequest) {
+                    logger.log(Level.WARNING, "closing idle connection");
                     closeConnection(c);
                     // idle.add(c);
                 } else if (c.noActivity && (currentTime - c.lastActivityTime >= NEWLY_ACCEPTED_CONN_IDLE_INTERVAL)) {
+                    logger.log(Level.WARNING, "closing newly accepted idle connection");
                     closeConnection(c);
                 } else if (MAX_REQ_TIME != -1 && c.inRequest && (currentTime - c.lastActivityTime >= MAX_REQ_TIME)) {
+                    logger.log(Level.WARNING, "closing connection due to request processing time");
                     closeConnection(c);
                 }
                 // TODO is MAX_RSP_TIME needed?

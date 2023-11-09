@@ -61,7 +61,6 @@ public class SimpleFileServer {
         int port = Integer.parseInt(args[1]);
         String logfile = args[2];
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 200);
-        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         HttpHandler h = new FileServerHandler(rootDir);
         HttpHandler h1 = new EchoHandler();
         HttpHandler h2 = new DevNullHandler();
@@ -75,7 +74,8 @@ public class SimpleFileServer {
         HttpContext c2 = server.createContext("/devnull", h2);
         c2.getFilters().add(new LogFilter(new File(logfile)));
 
-        server.setExecutor(Executors.newCachedThreadPool());
+        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+        // server.setExecutor(Executors.newCachedThreadPool());
         server.start();
     }
 
