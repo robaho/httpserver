@@ -28,6 +28,17 @@ Set the default HttpServer provider when starting the jvm:
 
 or instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
 
+or the service loader should now automatically find it when on the class path.
+
+## maven
+
+```xml
+<dependency>
+  <groupId>io.github.robaho</groupId>
+  <artifactId>httpserver</artifactId>
+  <version>1.0.1</version>
+</dependency>
+```
 ## future work
 
 There is no http2 support.
