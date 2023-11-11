@@ -1,5 +1,7 @@
 plugins {
     id 'java-library' 
+    id 'maven-publish'
+    id 'signing'
 }
 
 repositories {
@@ -124,6 +126,63 @@ task runSimpleFileServer(type: Test) {
             systemProperties = props
             args = ['fileserver','8888','fileserver/logfile.txt']
             // debug true
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'io.github.robaho'
+            artifactId = 'httpserver'
+            version = "1.0.1"
+
+            from components.java
+
+            pom {
+                name = 'HttpServer'
+                description = 'An HttpSettp based on the JDK version'
+
+                signing {
+                    sign publishing.publications.maven
+                    sign configurations.archives
+                }
+
+                url = 'https://github.com/robaho/httpserver'
+
+                scm {
+                    url = 'https://github.com/robaho/httpserver.git'
+                }
+
+                licenses {
+                    license {
+                        name = 'gnu v2.0'
+                        url = 'https://www.gnu.org/licenses/old-licenses/gpl-2.0.html'
+                    }
+                    license {
+                        name = 'nanohttpd'
+                        url = 'https://github.com/NanoHttpd/nanohttpd/blob/efb2ebf85a2b06f7c508aba9eaad5377e3a01e81/LICENSE.md'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'robaho'
+                        name = 'Robert Engels'
+                        email = 'robaho@me.com'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+        name = "OSSRH"
+        url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials {
+                username = "$maven_user"
+                password = "$maven_password"
+            }            
         }
     }
 }
