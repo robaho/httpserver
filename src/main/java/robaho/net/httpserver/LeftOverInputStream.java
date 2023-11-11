@@ -53,14 +53,6 @@ abstract class LeftOverInputStream extends FilterInputStream {
         this.server = t.getServerImpl();
     }
 
-    /**
-     * if bytes are left over buffered on *the UNDERLYING* stream
-     */
-    public boolean isDataBuffered() throws IOException {
-        assert eof;
-        return super.available() > 0;
-    }
-
     public void close() throws IOException {
         if (closed) {
             return;
@@ -73,10 +65,6 @@ abstract class LeftOverInputStream extends FilterInputStream {
 
     public boolean isClosed() {
         return closed;
-    }
-
-    public boolean isEOF() {
-        return eof;
     }
 
     protected abstract int readImpl(byte[] b, int off, int len) throws IOException;

@@ -162,16 +162,6 @@ class ChunkedInputStream extends LeftOverInputStream {
         return n > remaining ? remaining : n;
     }
 
-    /*
-     * called after the stream is closed to see if bytes
-     * have been read from the underlying channel
-     * and buffered internally
-     */
-    public boolean isDataBuffered() throws IOException {
-        assert eof;
-        return in.available() > 0;
-    }
-
     public boolean markSupported() {
         return false;
     }
