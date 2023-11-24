@@ -2,8 +2,9 @@ package robaho.net.httpserver.extras;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.FileInputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -103,5 +104,35 @@ public class MultipartFormParserTest {
         Assert.assertEquals(values.size(), 1);
 
         Assert.assertEquals(Files.readAllBytes(Path.of("src/test/resources/small.png")), Files.readAllBytes((values.get(0).file()).toPath()), "parse failed");
+    }
+
+    @Test
+    public void testFormSample() throws IOException {
+        var header = "Content-Type: multipart/form-data; boundary=46096193475433413916154539608327683027925589011069618792210780606661436297073";
+        InputStream is = new FileInputStream("src/test/resources/formcapture.bin");
+
+        Path storage = Path.of("/tmp", "parser_test");
+        storage.toFile().mkdirs();
+
+        var results = parse("UTF-8", header, is, storage);
+
+        Assert.assertEquals(results.size(), 1);
+        List<Part> values = results.get("myfile");
+        Assert.assertEquals(values.size(), 1);
+    }
+
+    @Test
+    public void testMultiFileFormSample() throws IOException {
+        var header = "Content-Type: multipart/form-data; boundary=32727956756671617181299787496850966478586709733883895208245398568225409799378";
+        InputStream is = new FileInputStream("src/test/resources/multifile_formcapture.bin");
+
+        Path storage = Path.of("/tmp", "parser_test");
+        storage.toFile().mkdirs();
+
+        var results = parse("UTF-8", header, is, storage);
+
+        Assert.assertEquals(results.size(), 2);
+        List<Part> values = results.get("myfile");
+        Assert.assertEquals(values.size(), 1);
     }
 }

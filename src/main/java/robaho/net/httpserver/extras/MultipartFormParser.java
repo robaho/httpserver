@@ -67,7 +67,8 @@ public class MultipartFormParser {
 
         System.out.println("reading until start of part");
         // read until boundary found
-        int matchCount = 0;
+        int matchCount = 2; // starting at 2 allows matching non-compliant senders. rfc says CRLF is part of
+                            // boundary marker
         while (true) {
             int c = is.read();
             if (c == -1) {
@@ -75,7 +76,7 @@ public class MultipartFormParser {
             }
             if (c == boundaryCheck[matchCount]) {
                 matchCount++;
-                if (matchCount == boundaryCheck.length) {
+                if (matchCount == boundaryCheck.length - 2) {
                     System.out.println("found boundary marker");
                     break;
                 }
