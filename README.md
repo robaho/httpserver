@@ -36,7 +36,7 @@ or the service loader should now automatically find it when on the class path.
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.3</version>
 </dependency>
 ```
 ## future work
