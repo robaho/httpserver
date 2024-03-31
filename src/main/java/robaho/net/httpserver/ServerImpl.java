@@ -289,6 +289,9 @@ class ServerImpl {
             while (true) {
                 try {
                     Socket s = socket.accept();
+                    if(logger.isLoggable(Level.TRACE)) {
+                        logger.log(Level.TRACE, "accepted connection: " + s.toString());
+                    }
                     if (MAX_CONNECTIONS > 0 && allConnections.size() >= MAX_CONNECTIONS) {
                         // we've hit max limit of current open connections, so we go
                         // ahead and close this connection without processing it
@@ -339,6 +342,7 @@ class ServerImpl {
     }
 
     private void closeConnection(HttpConnection conn) {
+        logger.log(Level.TRACE, "closing connection: " + conn.toString());
         conn.close();
         allConnections.remove(conn);
     }
@@ -362,6 +366,8 @@ class ServerImpl {
             this.rawin = connection.getInputStream();
             this.rawout = connection.getOutputStream();
 
+            logger.log(Level.TRACE, "exchange started");
+
             while (true) {
                 try {
                     runPerRequest();
@@ -372,7 +378,7 @@ class ServerImpl {
                     // these are common with clients breaking connections etc
                     logger.log(Level.TRACE, "ServerImpl IOException", e);
                     closeConnection(connection);
-                    return;
+                    break;
                 } catch (Exception e) {
                     logger.log(Level.WARNING, "ServerImpl unexpected exception", e);
                     // the following seems to be a better handling - to return a server internal error rather than simply
@@ -385,7 +391,7 @@ class ServerImpl {
                     // }
                     if (tx == null || !tx.sentHeaders || !tx.closed) {
                         closeConnection(connection);
-                        return;
+                        break;
                     }
                 } catch (Throwable t) {
                     closeConnection(connection);
@@ -393,11 +399,13 @@ class ServerImpl {
                     throw t;
                 }
             }
+            logger.log(Level.TRACE, "exchange finished");
         }
 
         private void runPerRequest() throws IOException {
             /* context will be null for new connections */
-            logger.log(Level.TRACE, "exchange started");
+
+            logger.log(Level.TRACE,"reading request");
 
             connection.inRequest = false;
             Request req = new Request(rawin, rawout);
@@ -552,6 +560,8 @@ class ServerImpl {
             if (tx.close) {
                 closeConnection(connection);
             } else {
+                // logger.log(Level.INFO,"flushing response");
+                // tx.getResponseBody().flush();
                 tx = null;
             }
         }

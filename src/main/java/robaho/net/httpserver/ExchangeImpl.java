@@ -260,8 +260,7 @@ class ExchangeImpl {
              * headers.
              */
             if (contentLen >= 0) {
-                String msg = "sendResponseHeaders: being invoked with a content length for a HEAD request";
-                logger.log(Level.WARNING, msg);
+                logger.log(Level.WARNING, "sendResponseHeaders: being invoked with a content length for a HEAD request");
             }
             noContentToSend = true;
             contentLen = 0;
