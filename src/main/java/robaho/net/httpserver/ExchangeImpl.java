@@ -217,9 +217,8 @@ class ExchangeImpl {
         this.rcode = rCode;
         String statusLine = rCode == 101 ? "HTTP/1.1 101 Switching Protocols\r\n"
                 : "HTTP/1.1 " + rCode + Code.msg(rCode) + "\r\n";
-        OutputStream tmpout = new BufferedOutputStream(ros);
         PlaceholderOutputStream o = getPlaceholderResponseBody();
-        tmpout.write(bytes(statusLine, 0), 0, statusLine.length());
+        ros.write(bytes(statusLine, 0), 0, statusLine.length());
         boolean noContentToSend = false; // assume there is content
         boolean noContentLengthHeader = false; // must not send Content-length is set
         rspHdrs.set("Date", FORMATTER.format(Instant.now()));
@@ -299,12 +298,13 @@ class ExchangeImpl {
             }
         }
 
-        write(rspHdrs, tmpout);
+        write(rspHdrs, ros);
         this.rspContentLen = contentLen;
-        tmpout.flush();
-        tmpout = null;
         sentHeaders = true;
         logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
+        if(contentLen==0) {
+            ros.flush();
+        }   
         if (noContentToSend) {
             close();
         }
