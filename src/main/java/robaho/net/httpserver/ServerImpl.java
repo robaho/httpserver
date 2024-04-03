@@ -366,7 +366,7 @@ class ServerImpl {
             this.rawin = connection.getInputStream();
             this.rawout = connection.getOutputStream();
 
-            logger.log(Level.TRACE, "exchange started");
+            logger.log(Level.TRACE, "exchange started "+connection.toString());
 
             while (true) {
                 try {
@@ -399,7 +399,7 @@ class ServerImpl {
                     throw t;
                 }
             }
-            logger.log(Level.TRACE, "exchange finished");
+            logger.log(Level.TRACE, "exchange finished "+connection.toString());
         }
 
         private void runPerRequest() throws IOException {
@@ -634,9 +634,8 @@ class ServerImpl {
         } else {
             r = requestStr;
         }
-        String message = r + " [" + code + " "
-                + Code.msg(code) + "] (" + text + ")";
-        logger.log(Level.DEBUG, message);
+        logger.log(Level.DEBUG, "reply "+ r + " [" + code + " "
+                + Code.msg(code) + "] (" + text + ")");
     }
 
     void delay() {

@@ -34,8 +34,10 @@ package robaho.net.httpserver.websockets;
  */
 
 import java.io.IOException;
+import java.io.EOFException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.charset.CharacterCodingException;
 import java.util.LinkedList;
 import java.util.List;
@@ -57,11 +59,17 @@ public abstract class WebSocket {
 
     private final List<WebSocketFrame> continuousFrames = new LinkedList<WebSocketFrame>();
 
-    private State state = State.UNCONNECTED;
+    private volatile State state = State.UNCONNECTED;
 
     private Lock lock = new ReentrantLock();
 
+    private final URI uri;
+
     protected WebSocket(HttpExchange exchange) {
+        this.uri = exchange.getRequestURI();
+
+        logger.info("connecting websocket "+uri);
+
         this.state = State.CONNECTING;
         this.in = exchange.getRequestBody();
         this.out = exchange.getResponseBody();
@@ -81,7 +89,9 @@ public abstract class WebSocket {
     protected abstract void onPong(WebSocketFrame pong) throws WebSocketException;
 
     protected void onException(IOException exception) {
-        logger.log(Level.FINER, "exception on websocket", exception);
+        if(state!=State.CLOSING && state!=State.CLOSED) {
+            logger.log(Level.FINER, "exception on websocket", exception);
+        }
     }
 
     protected void onFrameReceived(WebSocketFrame frame) {
@@ -100,6 +110,8 @@ public abstract class WebSocket {
     }
 
     public void close(CloseCode code, String reason, boolean initiatedByRemote) throws IOException {
+        logger.info("closing websocket "+uri);
+
         State oldState = this.state;
         this.state = State.CLOSING;
         if (oldState == State.OPEN) {
@@ -116,15 +128,13 @@ public abstract class WebSocket {
         if (this.in != null) {
             try {
                 this.in.close();
-            } catch (IOException e) {
-                logger.log(Level.FINE, "close failed", e);
+            } catch (IOException expected) {
             }
         }
         if (this.out != null) {
             try {
                 this.out.close();
-            } catch (IOException e) {
-                logger.log(Level.FINE, "close failed", e);
+            } catch (IOException expected) {
             }
         }
         this.state = State.CLOSED;
@@ -140,6 +150,7 @@ public abstract class WebSocket {
             code = ((CloseFrame) frame).getCloseCode();
             reason = ((CloseFrame) frame).getCloseReason();
         }
+        logger.finest("handleCloseFrame: "+uri+", code="+code+", reason="+reason+", state "+this.state);
         if (this.state == State.CLOSING) {
             // Answer for my requested close
             doClose(code, reason, false);
@@ -204,10 +215,14 @@ public abstract class WebSocket {
     void readWebsocket() {
         try {
             state = State.OPEN;
+            logger.fine("websocket open "+uri);
             onOpen();
             while (this.state == State.OPEN) {
                 handleWebsocketFrame(WebSocketFrame.read(in));
             }
+        } catch (EOFException e) {
+            onException(e);
+            doClose(CloseCode.AbnormalClosure, e.toString(), false);
         } catch (CharacterCodingException e) {
             onException(e);
             doClose(CloseCode.InvalidFramePayloadData, e.toString(), false);
@@ -215,10 +230,12 @@ public abstract class WebSocket {
             onException(e);
             if (e instanceof WebSocketException wse) {
                 doClose(wse.getCode(), wse.getReason(), false);
+            } else {
+                doClose(CloseCode.AbnormalClosure, e.toString(), false);
             }
         } finally {
             doClose(CloseCode.InternalServerError, "Handler terminated without closing the connection.", false);
-            logger.info("readWebsocket() exiting");
+            logger.finest("readWebsocket() exiting "+uri);
         }
     }
 

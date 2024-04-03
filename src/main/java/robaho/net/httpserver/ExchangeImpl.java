@@ -162,8 +162,8 @@ class ExchangeImpl {
             return uis;
         }
         if (websocket) {
-            uis_orig = new UndefLengthInputStream(this, ris);
-            uis = uis_orig;
+            // websocket connection cannot be re-used
+            uis = ris;
         } else if (reqContentLen == -1L) {
             uis_orig = new ChunkedInputStream(this, ris);
             uis = uis_orig;
@@ -266,7 +266,11 @@ class ExchangeImpl {
             o.setWrappedStream(new FixedLengthOutputStream(this, ros, contentLen));
         } else { /* not a HEAD request or 304 response */
             if (contentLen == 0) {
-                if (http10 || websocket) {
+                if (websocket) {
+                    o.setWrappedStream(ros);
+                    close = true;
+                }
+                else if (http10) {
                     o.setWrappedStream(new UndefLengthOutputStream(this, ros));
                     close = true;
                 } else {

@@ -28,6 +28,7 @@ package robaho.net.httpserver;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.EOFException;
 
 /**
  * a (filter) input stream which can tell us if bytes are "left over"
@@ -71,7 +72,7 @@ abstract class LeftOverInputStream extends FilterInputStream {
 
     public synchronized int read() throws IOException {
         if (closed) {
-            throw new IOException("Stream is closed");
+            throw new EOFException("Stream is closed");
         }
         int c = readImpl(one, 0, 1);
         if (c == -1 || c == 0) {
@@ -83,7 +84,7 @@ abstract class LeftOverInputStream extends FilterInputStream {
 
     public synchronized int read(byte[] b, int off, int len) throws IOException {
         if (closed) {
-            throw new IOException("Stream is closed");
+            throw new EOFException("Stream is closed");
         }
         return readImpl(b, off, len);
     }
