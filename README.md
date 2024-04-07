@@ -1,12 +1,14 @@
 # httpserver
 
-A simple http server designed for embedding based on the JDK sun.net.httpserver - only a 90kb jar.
+An implementation of the JDK com.sun.net.httpserver.HttpServer specification with a few significant enhancements.
 
 It adds websocket support using modified source from nanohttpd.
 
 All async functionality has been removed. Most synchronized blocks were removed in favor of other Java concurrency concepts.
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
+
+Designed for embedding only a 90kb jar.
 
 ## background
 
@@ -28,7 +30,7 @@ Set the default HttpServer provider when starting the jvm:
 
 or instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
 
-or the service loader should now automatically find it when on the class path.
+or the service loader will automatically find it when the jar is placed on the class path when using the standard HttpServer service provider.
 
 ## maven
 
