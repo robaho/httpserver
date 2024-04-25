@@ -74,7 +74,15 @@ class Request {
         pos = 0;
         lineBuf = new StringBuffer();
         while (!gotLF) {
-            int c = is.read();
+            int c;
+            
+            try {
+                c = is.read();
+            } catch(IOException e) {
+                if(pos==0) return null;
+                throw e;
+            }
+
             if (c == -1) {
                 return null;
             }
