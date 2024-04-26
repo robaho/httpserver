@@ -8,7 +8,6 @@ repositories {
     mavenCentral() 
 }
 
-
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -135,7 +134,7 @@ task runSimpleFileServer(type: Test) {
     }
 }
 
-task run(type: Test) { 
+task run(type: Test) {
     dependsOn testMainsClasses
     doLast {
         def props = systemProperties
