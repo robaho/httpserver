@@ -152,7 +152,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'io.github.robaho'
             artifactId = 'httpserver'
-            version = "1.0.2"
+            version = "1.0.3"
 
             from components.java
 
