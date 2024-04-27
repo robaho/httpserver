@@ -42,16 +42,16 @@ public class ProxyHandlerTest {
         try {
             var client = HttpClient.newHttpClient();
 
-            var direct_uri = URIBuilder.newBuilder().scheme("http").host(server1.getAddress().getHostName()).port(server1.getAddress().getPort()).path("/test").build();
-            var response = client.send(HttpRequest.newBuilder(direct_uri).build(),HttpResponse.BodyHandlers.ofString());
+            var uri = URIBuilder.newBuilder().scheme("http").host(server1.getAddress().getHostName()).port(server1.getAddress().getPort()).path("/test").build();
+            var response = client.send(HttpRequest.newBuilder(uri).build(),HttpResponse.BodyHandlers.ofString());
             if(!response.body().equals("hello")) throw new IllegalStateException("incorrect body "+response.body());
 
-            var uri = URIBuilder.newBuilder().scheme("http").host(proxy.getAddress().getHostName()).port(proxy.getAddress().getPort()).path("/test").build();
-            var proxied_response = client.send(HttpRequest.newBuilder(uri).build(),HttpResponse.BodyHandlers.ofString());
-            if(!proxied_response.body().equals("hello")) throw new IllegalStateException("incorrect body "+response.body());
+            uri = URIBuilder.newBuilder().scheme("http").host(proxy.getAddress().getHostName()).port(proxy.getAddress().getPort()).path("/test").build();
+            response = client.send(HttpRequest.newBuilder(uri).build(),HttpResponse.BodyHandlers.ofString());
+            if(!response.body().equals("hello")) throw new IllegalStateException("incorrect body "+response.body());
 
-            var post_response = client.send(HttpRequest.newBuilder(uri).POST(HttpRequest.BodyPublishers.ofString("senditback")).build(),HttpResponse.BodyHandlers.ofString());
-            if(!post_response.body().equals("senditback")) throw new IllegalStateException("incorrect body "+response.body());
+            response = client.send(HttpRequest.newBuilder(uri).POST(HttpRequest.BodyPublishers.ofString("senditback")).build(),HttpResponse.BodyHandlers.ofString());
+            if(!response.body().equals("senditback")) throw new IllegalStateException("incorrect body "+response.body());
 
 
         } finally {

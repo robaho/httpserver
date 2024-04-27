@@ -6,6 +6,7 @@ It adds websocket support using modified source from nanohttpd.
 
 It has basic server-side proxy support using [ProxyHandler](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/extras/ProxyHandler.java).
 
+ProxyHandler also supports tunneling proxies using CONNECT for https.
 
 All async functionality has been removed. Most synchronized blocks were removed in favor of other Java concurrency concepts.
 

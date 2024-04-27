@@ -1,9 +1,12 @@
 package robaho.net.httpserver.extras;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -12,10 +15,14 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.logging.Logger;
+
+import javax.net.SocketFactory;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -30,6 +37,8 @@ public class ProxyHandler implements HttpHandler {
     private final ConcurrentMap<URI,HostPort> proxies = new ConcurrentHashMap<>();
     private final HttpClient proxyClient;
     private final Optional<HostPort> defaultProxy;
+
+    protected final Logger logger = Logger.getLogger("robaho.net.httpserver.ProxyHandler");
 
     public ProxyHandler() {
         this(Optional.empty());
@@ -55,6 +64,36 @@ public class ProxyHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        if(exchange.getRequestMethod().equals("CONNECT")) {
+            if(!authorizeConnect(exchange)) return;
+            try (Socket s = SocketFactory.getDefault().createSocket()) {
+                var uri = exchange.getRequestURI();
+                var addr = new InetSocketAddress(uri.getScheme(),Integer.parseInt(uri.getSchemeSpecificPart()));
+                try {
+                    s.connect(addr);
+                } catch(Exception e) {
+                    logger.warning("failed to connect to "+addr);
+                    exchange.sendResponseHeaders(500,-1);
+                    return;
+                }
+                logger.fine("connected to "+s.getRemoteSocketAddress());
+                exchange.sendResponseHeaders(200,0);
+
+                try {
+                    exchange.getHttpContext().getServer().getExecutor().execute(() -> {
+                        try {
+                            transfer(s.getInputStream(),exchange.getResponseBody());
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    });
+                    transfer(exchange.getRequestBody(),s.getOutputStream());
+                } finally {
+                    logger.fine("proxy connection to "+s.getRemoteSocketAddress()+" ended");
+                    return;
+                }
+            }
+        }
         var proxy = proxyTo(exchange).orElseThrow(() -> new IOException("proxy not configured for "+exchange.getRequestURI()));
         var uri = exchange.getRequestURI();
         if(uri.getScheme()==null) {
@@ -70,11 +109,41 @@ public class ProxyHandler implements HttpHandler {
             exchange.getResponseHeaders().putAll(response.headers().map());
             exchange.sendResponseHeaders(response.statusCode(),0);
             try (var os = exchange.getResponseBody ()) {
-                response.body().transferTo(os);
+                transfer(response.body(),os);
             }
         } catch (InterruptedException ex) {
             throw new IOException("unable to proxy request to "+exchange.getRequestURI(),ex);
         }
+    }
+
+    /**
+     * override to check authorization headers. if returning false,
+     * the implementation must call exchange.sendResponseHeaders() with the appropriate code.
+     * 
+     * @return true if the CONNECT should proceed, else false
+     */
+    protected boolean authorizeConnect(HttpExchange exchange) {
+        return true;
+    }
+
+    private static int DEFAULT_BUFFER_SIZE = 16384;
+    private static long transfer(InputStream in, OutputStream out) throws IOException {
+        Objects.requireNonNull(out, "out");
+        long transferred = 0;
+        byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
+        int read;
+        while ((read = in.read(buffer, 0, DEFAULT_BUFFER_SIZE)) >= 0) {
+            out.write(buffer, 0, read);
+            out.flush();
+            if (transferred < Long.MAX_VALUE) {
+                try {
+                    transferred = Math.addExact(transferred, read);
+                } catch (ArithmeticException ignore) {
+                    transferred = Long.MAX_VALUE;
+                }
+            }
+        }
+        return transferred;
     }
 
     private static final Set<String> restrictedHeaders = Set.of("CONNECTION","HOST","UPGRADE","CONTENT-LENGTH");

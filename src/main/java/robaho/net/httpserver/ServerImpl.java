@@ -45,6 +45,7 @@ import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -52,6 +53,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.LogManager;
+import java.util.logging.LogRecord;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -109,14 +112,22 @@ class ServerImpl {
     }
 
     private Timer timer;
-    private final Logger logger;
+    private Logger logger;
     private Thread dispatcherThread;
 
     ServerImpl(HttpServer wrapper, String protocol, InetSocketAddress addr, int backlog) throws IOException {
 
         this.protocol = protocol;
         this.wrapper = wrapper;
-        this.logger = System.getLogger("robaho.net.httpserver");
+
+        this.logger = System.getLogger("robaho.net.httpserver."+System.identityHashCode(this));
+        LogManager.getLogManager().getLogger(this.logger.getName()).setFilter(new java.util.logging.Filter(){
+            @Override
+            public boolean isLoggable(LogRecord record) {
+                record.setMessage("["+protocol+":"+socket.getLocalPort()+"] "+record.getMessage());
+                return true;
+            }
+        });
 
         https = protocol.equalsIgnoreCase("https");
         contexts = new ContextList();
@@ -124,6 +135,7 @@ class ServerImpl {
         if (addr != null) {
             socket.bind(addr, backlog);
             bound = true;
+            logger.log(Level.INFO,"server bound to "+socket.getLocalSocketAddress());
         }
         dispatcher = new Dispatcher();
         timer = new Timer("connection-cleaner", true);
@@ -139,6 +151,7 @@ class ServerImpl {
             throw new NullPointerException("null address");
         }
         socket.bind(addr, backlog);
+        logger.log(Level.INFO,"server bound to "+socket.getLocalSocketAddress());
         bound = true;
     }
 
@@ -491,7 +504,9 @@ class ServerImpl {
                     }
                 }
             }
-            ctx = contexts.findContext(protocol, uri.getPath());
+            logger.log(Level.INFO,"protocol "+protocol+" uri "+uri+" headers "+headers);
+            String uriPath = Optional.ofNullable(uri.getPath()).orElse("/");
+            ctx = contexts.findContext(protocol, uriPath);
             if (ctx == null) {
                 reject(Code.HTTP_NOT_FOUND,
                         requestLine, "No context found for request");

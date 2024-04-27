@@ -134,18 +134,15 @@ task runSimpleFileServer(type: Test) {
     }
 }
 
-task run(type: Test) {
+task run(type: JavaExec) {
+    classpath sourceSets.testMains.runtimeClasspath
     dependsOn testMainsClasses
-    doLast {
-        def props = systemProperties
-        javaexec {
-            classpath sourceSets.testMains.runtimeClasspath
-            main runClassName
-            systemProperties = props
-        }
-    }
 }
 
+publish {
+    dependsOn test
+    dependsOn testMainsTest
+}
 
 publishing {
     publications {

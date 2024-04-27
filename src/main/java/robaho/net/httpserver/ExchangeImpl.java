@@ -65,6 +65,7 @@ class ExchangeImpl {
     }
 
     private static final String HEAD = "HEAD";
+    private static final String CONNECT = "CONNECT";
 
     /*
      * streams which take care of the HTTP protocol framing
@@ -127,6 +128,10 @@ class ExchangeImpl {
         return HEAD.equals(getRequestMethod());
     }
 
+    private boolean isConnectRequest() {
+        return CONNECT.equals(getRequestMethod());
+    }
+
     public void close() {
         if (closed) {
             return;
@@ -161,8 +166,8 @@ class ExchangeImpl {
         if (uis != null) {
             return uis;
         }
-        if (websocket) {
-            // websocket connection cannot be re-used
+        if (websocket || isConnectRequest()) {
+            // connection cannot be re-used
             uis = ris;
         } else if (reqContentLen == -1L) {
             uis_orig = new ChunkedInputStream(this, ris);
@@ -266,7 +271,7 @@ class ExchangeImpl {
             o.setWrappedStream(new FixedLengthOutputStream(this, ros, contentLen));
         } else { /* not a HEAD request or 304 response */
             if (contentLen == 0) {
-                if (websocket) {
+                if (websocket || isConnectRequest()) {
                     o.setWrappedStream(ros);
                     close = true;
                 }

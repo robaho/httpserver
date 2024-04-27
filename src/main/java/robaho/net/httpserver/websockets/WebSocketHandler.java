@@ -16,7 +16,7 @@ public abstract class WebSocketHandler implements HttpHandler {
         Headers headers = exchange.getRequestHeaders();
 
         if (!isWebsocketRequested(headers)) {
-            exchange.sendResponseHeaders(Code.HTTP_BAD_REQUEST, 0l);
+            exchange.sendResponseHeaders(Code.HTTP_BAD_REQUEST, -1l);
             return;
         }
 
