@@ -42,7 +42,7 @@ or the service loader will automatically find it when the jar is placed on the c
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.3</version>
+  <version>1.0.4</version>
 </dependency>
 ```
 ## future work
