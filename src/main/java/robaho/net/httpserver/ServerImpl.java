@@ -678,7 +678,7 @@ class ServerImpl {
 
             for (var c : allConnections) {
                 if (currentTime - c.lastActivityTime >= IDLE_INTERVAL && !c.inRequest) {
-                    logger.log(Level.WARNING, "closing idle connection");
+                    logger.log(Level.DEBUG, "closing idle connection");
                     closeConnection(c);
                     // idle.add(c);
                 } else if (c.noActivity && (currentTime - c.lastActivityTime >= NEWLY_ACCEPTED_CONN_IDLE_INTERVAL)) {
