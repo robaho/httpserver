@@ -362,7 +362,7 @@ class ServerImpl {
 
     /* per exchange task */
     class Exchange implements Runnable {
-        HttpConnection connection;
+        final HttpConnection connection;
         InputStream rawin;
         OutputStream rawout;
         String protocol;
@@ -379,7 +379,7 @@ class ServerImpl {
             this.rawin = connection.getInputStream();
             this.rawout = connection.getOutputStream();
 
-            logger.log(Level.TRACE, "exchange started "+connection.toString());
+            logger.log(Level.TRACE, () -> "exchange started "+connection.toString());
 
             while (true) {
                 try {
@@ -412,7 +412,7 @@ class ServerImpl {
                     throw t;
                 }
             }
-            logger.log(Level.TRACE, "exchange finished "+connection.toString());
+            logger.log(Level.TRACE, () -> "exchange finished "+connection.toString());
         }
 
         private void runPerRequest() throws IOException {
@@ -422,7 +422,7 @@ class ServerImpl {
 
             connection.inRequest = false;
             Request req = new Request(rawin, rawout);
-            String requestLine = req.requestLine();
+            final String requestLine = req.requestLine();
             connection.inRequest = true;
 
             if (requestLine == null) {
@@ -431,7 +431,7 @@ class ServerImpl {
                 closeConnection(connection);
                 return;
             }
-            logger.log(Level.DEBUG, "Exchange request line: {0}", requestLine);
+            logger.log(Level.DEBUG, () -> "Exchange request line: "+ requestLine);
             int space = requestLine.indexOf(' ');
             if (space == -1) {
                 reject(Code.HTTP_BAD_REQUEST,
@@ -504,7 +504,7 @@ class ServerImpl {
                     }
                 }
             }
-            logger.log(Level.INFO,"protocol "+protocol+" uri "+uri+" headers "+headers);
+            logger.log(Level.TRACE,() -> "protocol "+protocol+" uri "+uri+" headers "+headers);
             String uriPath = Optional.ofNullable(uri.getPath()).orElse("/");
             ctx = contexts.findContext(protocol, uriPath);
             if (ctx == null) {

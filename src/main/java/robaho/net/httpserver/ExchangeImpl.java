@@ -235,7 +235,7 @@ class ExchangeImpl {
 
         /* check for response type that is not allowed to send a body */
         if (rCode == 101) {
-            logger.log(Level.INFO, "switching protocols");
+            logger.log(Level.DEBUG, () -> "switching protocols");
 
             if (contentLen != 0) {
                 String msg = "sendResponseHeaders: rCode = " + rCode
@@ -310,7 +310,9 @@ class ExchangeImpl {
         write(rspHdrs, ros);
         this.rspContentLen = contentLen;
         sentHeaders = true;
-        logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
+        if(logger.isLoggable(Level.TRACE)) {
+            logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
+        }
         if(contentLen==0) {
             ros.flush();
         }   
