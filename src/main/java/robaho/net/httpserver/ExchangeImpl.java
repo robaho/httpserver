@@ -88,7 +88,8 @@ class ExchangeImpl {
             String m, URI u, Request req, long len, HttpConnection connection) throws IOException {
         this.req = req;
         // make a mutable copy to allow HttpHandler to modify in chain
-        this.reqHdrs = new Headers(req.headers());
+        this.reqHdrs = new Headers();
+        reqHdrs.putAll(req.headers());
         this.rspHdrs = new Headers();
         this.method = m;
         this.uri = u;

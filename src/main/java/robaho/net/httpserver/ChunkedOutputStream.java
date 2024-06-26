@@ -53,7 +53,7 @@ class ChunkedOutputStream extends FilterOutputStream {
     static final int OFFSET = 6; /* initial <=4 bytes for len + CRLF */
     private int pos = OFFSET;
     private int count = 0;
-    private byte[] buf = new byte[CHUNK_SIZE + OFFSET + 2];
+    final private byte[] buf = new byte[CHUNK_SIZE + OFFSET + 2];
     ExchangeImpl t;
 
     ChunkedOutputStream(ExchangeImpl t, OutputStream src) {

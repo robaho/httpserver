@@ -75,7 +75,7 @@ class HttpConnection {
 
     HttpConnection(Socket socket) throws IOException {
         this.socket = socket;
-        this.is = new BufferedInputStream(new ActivityTimerInputStream(socket.getInputStream()));
+        this.is = new NoSyncBufferedInputStream(new ActivityTimerInputStream(socket.getInputStream()));
         this.os = new BufferedOutputStream(new ActivityTimerOutputStream(socket.getOutputStream()));
     }
 
