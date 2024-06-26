@@ -174,6 +174,7 @@ class ServerImpl {
                 maxConnectionsExceededCount.set(0);
                 lastStatsTime = now;
                 lastRequestCount = 0;
+                exchange.sendResponseHeaders(200,-1);
                 exchange.close();
                 return;
             }
