@@ -36,13 +36,34 @@ or instantiate the server directly using [this](https://github.com/robaho/httpse
 
 or the service loader will automatically find it when the jar is placed on the class path when using the standard HttpServer service provider.
 
+## server statistics
+
+The server tracks some basic statistics. To enable the access endpoint `/__stats`, set the system property `robaho.net.httpserver.EnableStatistics=true`.
+
+Sample usage:
+
+```shell
+$ curl http://localhost:8080/__stats
+Connections: 4264
+Active Connections: 2049
+Requests: 2669256
+Requests/sec: 73719
+Handler Exceptions: 0
+Socket Exceptions: 0
+Mac Connections Exceeded: 0
+Idle Closes: 0
+Reply Errors: 0
+```
+
+The counts can be reset using `/__stats?reset`. The `requests/sec` is calculated from the previous statistics request. 
+
 ## maven
 
 ```xml
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.4</version>
+  <version>1.0.5</version>
 </dependency>
 ```
 ## future work

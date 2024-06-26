@@ -53,6 +53,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 
@@ -115,6 +116,15 @@ class ServerImpl {
     private Logger logger;
     private Thread dispatcherThread;
 
+    // statistics
+    private final AtomicLong connectionCount = new AtomicLong();
+    private final AtomicLong requestCount = new AtomicLong();
+    private final AtomicLong handleExceptionCount = new AtomicLong();
+    private final AtomicLong socketExceptionCount = new AtomicLong();
+    private final AtomicLong idleCloseCount = new AtomicLong();
+    private final AtomicLong replyErrorCount = new AtomicLong();
+    private final AtomicLong maxConnectionsExceededCount = new AtomicLong();
+
     ServerImpl(HttpServer wrapper, String protocol, InetSocketAddress addr, int backlog) throws IOException {
 
         this.protocol = protocol;
@@ -141,6 +151,55 @@ class ServerImpl {
         timer = new Timer("connection-cleaner", true);
         timer.schedule(new ConnectionCleanerTask(), IDLE_TIMER_TASK_SCHEDULE, IDLE_TIMER_TASK_SCHEDULE);
         logger.log(Level.DEBUG, "HttpServer created " + protocol + " " + addr);
+        if(Boolean.getBoolean("robaho.net.httpserver.EnableStats")) {
+            createContext("/__stats",new StatsHandler());
+        }
+    }
+
+    private class StatsHandler implements HttpHandler {
+        volatile long lastStatsTime = System.currentTimeMillis();
+        volatile long lastRequestCount = 0;
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+
+            long now = System.currentTimeMillis();
+
+            if("reset".equals(exchange.getRequestURI().getQuery())) {
+                connectionCount.set(0);
+                requestCount.set(0);
+                handleExceptionCount.set(0);
+                socketExceptionCount.set(0);
+                idleCloseCount.set(0);
+                replyErrorCount.set(0);
+                maxConnectionsExceededCount.set(0);
+                lastStatsTime = now;
+                lastRequestCount = 0;
+                exchange.close();
+                return;
+            }
+
+            var rc = requestCount.get();
+
+            var output = 
+                (
+                "Connections: "+connectionCount.get()+"\n" +
+                "Active Connections: "+allConnections.size()+"\n" +
+                "Requests: "+rc+"\n" +
+                "Requests/sec: "+(long)((rc-lastRequestCount)/(((double)(now-lastStatsTime))/1000))+"\n"+
+                "Handler Exceptions: "+handleExceptionCount.get()+"\n"+
+                "Socket Exceptions: "+socketExceptionCount.get()+"\n"+
+                "Mac Connections Exceeded: "+maxConnectionsExceededCount.get()+"\n"+
+                "Idle Closes: "+idleCloseCount.get()+"\n"+
+                "Reply Errors: "+replyErrorCount.get()+"\n"
+                ).getBytes();
+
+            lastStatsTime = now;
+            lastRequestCount = rc;
+
+            exchange.sendResponseHeaders(200,output.length);
+            exchange.getResponseBody().write(output);
+            exchange.getResponseBody().close();
+        }
     }
 
     public void bind(InetSocketAddress addr, int backlog) throws IOException {
@@ -151,7 +210,7 @@ class ServerImpl {
             throw new NullPointerException("null address");
         }
         socket.bind(addr, backlog);
-        logger.log(Level.INFO,"server bound to "+socket.getLocalSocketAddress());
+        logger.log(Level.INFO,"server bound to "+socket.getLocalSocketAddress()+ " with backlog "+backlog);
         bound = true;
     }
 
@@ -291,11 +350,9 @@ class ServerImpl {
         });
     }
 
-    /* main server listener task */
     /**
      * The Dispatcher is responsible for accepting any connections and then
-     * using those connections to processing any incoming requests.
-     *
+     * using those connections to process incoming requests.
      */
     class Dispatcher implements Runnable {
         public void run() {
@@ -305,10 +362,12 @@ class ServerImpl {
                     if(logger.isLoggable(Level.TRACE)) {
                         logger.log(Level.TRACE, "accepted connection: " + s.toString());
                     }
+                    connectionCount.incrementAndGet();
                     if (MAX_CONNECTIONS > 0 && allConnections.size() >= MAX_CONNECTIONS) {
                         // we've hit max limit of current open connections, so we go
                         // ahead and close this connection without processing it
                         try {
+                            maxConnectionsExceededCount.incrementAndGet();
                             logger.log(Level.WARNING, "closing accepted connection due to too many connections");
                             s.close();
                         } catch (IOException ignore) {
@@ -338,6 +397,7 @@ class ServerImpl {
 
                     } catch (Exception e) {
                         logger.log(Level.TRACE, "Dispatcher Exception", e);
+                        handleExceptionCount.incrementAndGet();
                         closeConnection(c);
                     }
                 } catch (IOException e) {
@@ -390,6 +450,7 @@ class ServerImpl {
                 } catch (SocketException e) {
                     // these are common with clients breaking connections etc
                     logger.log(Level.TRACE, "ServerImpl IOException", e);
+                    socketExceptionCount.incrementAndGet();
                     closeConnection(connection);
                     break;
                 } catch (Exception e) {
@@ -431,6 +492,9 @@ class ServerImpl {
                 closeConnection(connection);
                 return;
             }
+
+            requestCount.incrementAndGet();
+
             logger.log(Level.DEBUG, () -> "Exchange request line: "+ requestLine);
             int space = requestLine.indexOf(' ');
             if (space == -1) {
@@ -630,6 +694,7 @@ class ServerImpl {
                 }
             } catch (IOException e) {
                 logger.log(Level.TRACE, "ServerImpl.sendReply", e);
+                replyErrorCount.incrementAndGet();
                 closeConnection(connection);
             }
         }
@@ -679,6 +744,7 @@ class ServerImpl {
             for (var c : allConnections) {
                 if (currentTime - c.lastActivityTime >= IDLE_INTERVAL && !c.inRequest) {
                     logger.log(Level.DEBUG, "closing idle connection");
+                    idleCloseCount.incrementAndGet();
                     closeConnection(c);
                     // idle.add(c);
                 } else if (c.noActivity && (currentTime - c.lastActivityTime >= NEWLY_ACCEPTED_CONN_IDLE_INTERVAL)) {
