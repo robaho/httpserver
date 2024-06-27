@@ -145,7 +145,7 @@ class ServerImpl {
         if (addr != null) {
             socket.bind(addr, backlog);
             bound = true;
-            logger.log(Level.INFO,"server bound to "+socket.getLocalSocketAddress());
+            logger.log(Level.INFO,"server bound to "+socket.getLocalSocketAddress() + " with backlog "+backlog);
         }
         dispatcher = new Dispatcher();
         timer = new Timer("connection-cleaner", true);
@@ -493,7 +493,7 @@ class ServerImpl {
                 closeConnection(connection);
                 return;
             }
-
+            connection.requestCount++;
             requestCount.incrementAndGet();
 
             logger.log(Level.DEBUG, () -> "Exchange request line: "+ requestLine);
@@ -594,13 +594,16 @@ class ServerImpl {
                 tx.http10 = true;
                 if (chdr == null) {
                     tx.close = true;
-                    rheaders.set("Connection", "close");
                 } else if (chdr.equalsIgnoreCase("keep-alive")) {
                     rheaders.set("Connection", "keep-alive");
                     int idleSeconds = (int) (ServerConfig.getIdleIntervalMillis() / 1000);
                     String val = "timeout=" + idleSeconds;
                     rheaders.set("Keep-Alive", val);
                 }
+            }
+
+            if(tx.close) {
+                rheaders.set("Connection", "close");
             }
 
             /*

@@ -25,17 +25,18 @@
 
 package robaho.net.httpserver;
 
-import java.io.*;
-
+import java.io.BufferedOutputStream;
+import java.io.FilterInputStream;
+import java.io.FilterOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.Socket;
 
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
-
-import java.io.FilterInputStream;
-import java.io.FilterOutputStream;
 
 /**
  * encapsulates all the connection specific state for a HTTP/S connection
@@ -57,6 +58,7 @@ class HttpConnection {
     volatile long lastActivityTime;
     volatile boolean noActivity;
     volatile boolean inRequest;
+    volatile long requestCount;
 
     SSLSession getSSLSession() {
         return (socket instanceof SSLSocket ssl) ? ssl.getHandshakeSession() : null;
@@ -94,7 +96,11 @@ class HttpConnection {
         closed = true;
 
         if (socket != null) {
-            logger.log(Level.TRACE, "Closing connection: " + socket.toString());
+            if(requestCount==0) {
+                logger.log(Level.WARNING, "closing connection: remote "+socket.getRemoteSocketAddress() + " with 0 requests");
+            } else {
+                logger.log(Level.TRACE, () -> "Closing connection: remote " + socket.getRemoteSocketAddress());
+            }
         }
 
         if (socket.isClosed()) {
@@ -138,6 +144,7 @@ class HttpConnection {
 
         private ActivityTimerInputStream(InputStream inputStream) {
             super(inputStream);
+            lastActivityTime = System.currentTimeMillis();
         }
 
         @Override
@@ -173,6 +180,7 @@ class HttpConnection {
 
         private ActivityTimerOutputStream(OutputStream outputStream) {
             super(outputStream);
+            lastActivityTime = System.currentTimeMillis();
         }
         @Override
         public void write(int b) throws IOException {
