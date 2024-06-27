@@ -155,7 +155,7 @@ publishing {
 
             pom {
                 name = 'HttpServer'
-                description = 'An HttpSettp based on the JDK version'
+                description = 'A modified http server based on the JDK version designed for Virtual Threads. Includes websocket support.'
 
                 signing {
                     sign publishing.publications.maven
