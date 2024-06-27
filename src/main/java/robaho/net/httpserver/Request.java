@@ -35,13 +35,12 @@ import com.sun.net.httpserver.Headers;
  */
 class Request {
 
-    static final int BUF_LEN = 2048;
-    static final byte CR = 13;
-    static final byte LF = 10;
+    static final char CR = 13;
+    static final char LF = 10;
 
     private String startLine;
-    private InputStream is;
-    private OutputStream os;
+    private final InputStream is;
+    private final OutputStream os;
 
     Request(InputStream rawInputStream, OutputStream rawout) throws IOException {
         is = rawInputStream;
@@ -52,10 +51,6 @@ class Request {
         } while ("".equals(startLine));
     }
 
-    char[] buf = new char[BUF_LEN];
-    int pos;
-    StringBuffer lineBuf;
-
     public InputStream inputStream() {
         return is;
     }
@@ -64,22 +59,73 @@ class Request {
         return os;
     }
 
+    static class PushbackStream {
+        private final InputStream is;
+        private int pushback = -1;
+        private boolean eof=false;
+
+        public PushbackStream(InputStream is) {
+            this.is = is;
+        }
+        public int read() throws IOException {
+            if(pushback!=-1) {
+                try {
+                    return pushback;
+                } finally {
+                    pushback=-1;
+                }
+            }
+            if(eof) return -1;
+            return is.read();
+        }
+        public void skipWhitespace() throws IOException {
+            int c;
+            for(c=read();c==' ' || c=='\t';c=read()){}
+            if(c==-1) eof=true; else pushback=c;
+        }
+    }
+
+    // efficient building of trimmed strings
+    static class StrBuilder {
+        private char buffer[] = new char[128];
+        private int count=0;
+        public void append(int c) {
+            if(count==0 && c==' ') return;
+            if(count==buffer.length) {
+                char tmp[] = new char[buffer.length*2];
+                System.arraycopy(buffer,0,tmp,0,count);
+                buffer=tmp;
+            }
+            buffer[count++]=(char)c;
+        }
+        @Override
+        public String toString() {
+            while(count>0 && buffer[count-1]==' ') count--;
+            return new String(buffer,0,count);
+        }
+        public boolean isEmpty() {
+            return count==0;
+        }
+        public void clear() {
+            count=0;
+        }
+    }
+    
     /**
      * read a line from the stream returning as a String.
      * Not used for reading headers.
      */
+    private String readLine() throws IOException {
+        StringBuilder lineBuf = new StringBuilder();
 
-    public String readLine() throws IOException {
-        boolean gotCR = false, gotLF = false;
-        pos = 0;
-        lineBuf = new StringBuffer();
-        while (!gotLF) {
+        boolean gotCR = false;
+        while (true) {
             int c;
             
             try {
                 c = is.read();
             } catch(IOException e) {
-                if(pos==0) return null;
+                if(lineBuf.length()==0) return null;
                 throw e;
             }
 
@@ -88,30 +134,20 @@ class Request {
             }
             if (gotCR) {
                 if (c == LF) {
-                    gotLF = true;
+                    return new String(lineBuf);
                 } else {
                     gotCR = false;
-                    consume(CR);
-                    consume(c);
+                    lineBuf.append(CR);
+                    lineBuf.append((char)c);
                 }
             } else {
                 if (c == CR) {
                     gotCR = true;
                 } else {
-                    consume(c);
+                    lineBuf.append((char)c);
                 }
             }
         }
-        lineBuf.append(buf, 0, pos);
-        return new String(lineBuf);
-    }
-
-    private void consume(int c) {
-        if (pos == BUF_LEN) {
-            lineBuf.append(buf);
-            pos = 0;
-        }
-        buf[pos++] = (char) c;
     }
 
     /**
@@ -130,91 +166,49 @@ class Request {
         }
         hdrs = new Headers();
 
-        char s[] = new char[10];
-        int len = 0;
+        StrBuilder key = new StrBuilder();
+        StrBuilder value = new StrBuilder();
 
-        int firstc = is.read();
+        PushbackStream pbs = new PushbackStream(is);
 
-        // check for empty headers
-        if (firstc == CR || firstc == LF) {
-            int c = is.read();
-            if (c == CR || c == LF) {
-                return hdrs;
-            }
-            s[0] = (char) firstc;
-            len = 1;
-            firstc = c;
-        }
+        boolean inKey = true;
+        boolean prevCR = false;
+        boolean sol = true;
+        int c;
 
-        while (firstc != LF && firstc != CR && firstc >= 0) {
-            int keyend = -1;
-            int c;
-            boolean inKey = firstc > ' ';
-            s[len++] = (char) firstc;
-            parseloop: {
-                while ((c = is.read()) >= 0) {
-                    switch (c) {
-                        /* fallthrough */
-                        case ':':
-                            if (inKey && len > 0)
-                                keyend = len;
-                            inKey = false;
-                            break;
-                        case '\t':
-                            c = ' ';
-                        case ' ':
-                            inKey = false;
-                            break;
-                        case CR:
-                        case LF:
-                            firstc = is.read();
-                            if (c == CR && firstc == LF) {
-                                firstc = is.read();
-                                if (firstc == CR)
-                                    firstc = is.read();
-                            }
-                            if (firstc == LF || firstc == CR || firstc > ' ')
-                                break parseloop;
-                            /* continuation */
-                            c = ' ';
-                            break;
-                    }
-                    if (len >= s.length) {
-                        char ns[] = new char[s.length * 2];
-                        System.arraycopy(s, 0, ns, 0, len);
-                        s = ns;
-                    }
-                    s[len++] = (char) c;
+        while((c=pbs.read())!=-1) {
+            if(c==CR) { prevCR = true; }
+            else if(c==LF && prevCR) {
+                if(key.isEmpty() && value.isEmpty()) break;
+                if(sol) {
+                    hdrs.add(key.toString(),value.toString());
+                    break;
                 }
-                firstc = -1;
-            }
-            while (len > 0 && s[len - 1] <= ' ')
-                len--;
-            String k;
-            if (keyend <= 0) {
-                k = null;
-                keyend = 0;
+                prevCR=false;
+                sol=true;
             } else {
-                k = String.copyValueOf(s, 0, keyend);
-                if (keyend < len && s[keyend] == ':')
-                    keyend++;
-                while (keyend < len && s[keyend] <= ' ')
-                    keyend++;
+                if((c==' ' || c=='\t') && sol) {
+                    pbs.skipWhitespace();
+                    inKey=false;
+                    sol=false;
+                } else {
+                    if(sol) {
+                        if(!key.isEmpty() || !value.isEmpty()) {
+                            hdrs.add(key.toString(),value.toString());
+                            key.clear();
+                            value.clear();
+                        }
+                        inKey=true;
+                        sol=false;
+                    }
+                    if(c==':' && inKey) {
+                        inKey=false;
+                        pbs.skipWhitespace();
+                    } else {
+                        (inKey ? key : value).append(c);
+                    }
+                }
             }
-            String v;
-            if (keyend >= len)
-                v = new String();
-            else
-                v = String.copyValueOf(s, keyend, len - keyend);
-
-            if (hdrs.size() >= ServerConfig.getMaxReqHeaders()) {
-                throw new IOException("maximum number of headers exceeded");
-            }
-            if (k == null) { // Headers disallows null keys, use empty string
-                k = ""; // instead to represent invalid key
-            }
-            hdrs.add(k, v);
-            len = 0;
         }
         return hdrs;
     }
