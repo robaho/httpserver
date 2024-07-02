@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * simple buffered input stream with no synchronization. only supports mark readlimit up to the buffer size
+ * simple buffered input stream with no synchronization. mark/reset are not supported.
  */
 public class NoSyncBufferedInputStream extends FilterInputStream {
 
@@ -76,14 +76,13 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
     }
 
     /**
-     * Fills the buffer with more data, taking into account
-     * shuffling and other tricks for dealing with marks.
-     * Assumes that it is being called by a locked method.
+     * Fills the buffer with more data.
      * This method also assumes that all data has already been read in,
      * hence pos > count.
      */
     private void fill() throws IOException {
         pos = 0;
+        count = 0;
         int n = getInIfOpen().read(buf);
         if (n > 0)
             count = n;
