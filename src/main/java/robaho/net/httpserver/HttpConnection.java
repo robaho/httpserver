@@ -78,7 +78,7 @@ class HttpConnection {
     HttpConnection(Socket socket) throws IOException {
         this.socket = socket;
         this.is = new NoSyncBufferedInputStream(new ActivityTimerInputStream(socket.getInputStream()));
-        this.os = new BufferedOutputStream(new ActivityTimerOutputStream(socket.getOutputStream()));
+        this.os = new NoSyncBufferedOutputStream(new ActivityTimerOutputStream(socket.getOutputStream()));
     }
 
     void setContext(HttpContextImpl ctx) {

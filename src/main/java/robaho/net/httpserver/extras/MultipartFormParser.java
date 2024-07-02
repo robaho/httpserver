@@ -1,7 +1,6 @@
 package robaho.net.httpserver.extras;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import robaho.net.httpserver.NoSyncBufferedOutputStream;
 
 /**
  * parse multipart form data
@@ -123,7 +124,7 @@ public class MultipartFormParser {
             } else {
                 File file = Path.of(storage.toString(), meta.filename).toFile();
                 file.deleteOnExit();
-                os = new BufferedOutputStream(new FileOutputStream(file));
+                os = new NoSyncBufferedOutputStream(new FileOutputStream(file));
                 addToResults = () -> results.computeIfAbsent(meta.name, k -> new LinkedList<Part>()).add(new Part(null, meta.filename, null, file));
             }
 

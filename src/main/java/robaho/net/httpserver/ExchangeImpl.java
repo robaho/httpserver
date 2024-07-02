@@ -31,6 +31,8 @@ import javax.net.ssl.*;
 import java.util.*;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -224,7 +226,7 @@ class ExchangeImpl {
         String statusLine = rCode == 101 ? "HTTP/1.1 101 Switching Protocols\r\n"
                 : "HTTP/1.1 " + rCode + Code.msg(rCode) + "\r\n";
         PlaceholderOutputStream o = getPlaceholderResponseBody();
-        ros.write(bytes(statusLine, 0), 0, statusLine.length());
+        ros.write(statusLine.getBytes(ISO_CHARSET));
         boolean noContentToSend = false; // assume there is content
         boolean noContentLengthHeader = false; // must not send Content-length is set
         rspHdrs.set("Date", FORMATTER.format(Instant.now()));
@@ -323,48 +325,23 @@ class ExchangeImpl {
         getServerImpl().logReply(rCode, req.requestLine(), null);
     }
 
+    static final Charset ISO_CHARSET = StandardCharsets.ISO_8859_1;
+    static final byte[] colonSpace = ": ".getBytes(ISO_CHARSET);
+    static final byte[] CRNL = "\r\n".getBytes(ISO_CHARSET);
+
     void write(Headers map, OutputStream os) throws IOException {
         Set<Map.Entry<String, List<String>>> entries = map.entrySet();
         for (Map.Entry<String, List<String>> entry : entries) {
             String key = entry.getKey();
-            byte[] buf;
             List<String> values = entry.getValue();
             for (String val : values) {
-                int i = key.length();
-                buf = bytes(key, 2);
-                buf[i++] = ':';
-                buf[i++] = ' ';
-                os.write(buf, 0, i);
-                buf = bytes(val, 2);
-                i = val.length();
-                buf[i++] = '\r';
-                buf[i++] = '\n';
-                os.write(buf, 0, i);
+                os.write(key.getBytes(ISO_CHARSET));
+                os.write(colonSpace);
+                os.write(val.getBytes(ISO_CHARSET));
+                os.write(CRNL);
             }
         }
-        os.write('\r');
-        os.write('\n');
-    }
-
-    private byte[] rspbuf = new byte[128]; // used by bytes()
-
-    /**
-     * convert string to byte[], using rspbuf
-     * Make sure that at least "extra" bytes are free at end
-     * of rspbuf. Reallocate rspbuf if not big enough.
-     * caller must check return value to see if rspbuf moved
-     */
-    private byte[] bytes(String s, int extra) {
-        int slen = s.length();
-        if (slen + extra > rspbuf.length) {
-            int diff = slen + extra - rspbuf.length;
-            rspbuf = new byte[2 * (rspbuf.length + diff)];
-        }
-        char c[] = s.toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            rspbuf[i] = (byte) c[i];
-        }
-        return rspbuf;
+        os.write(CRNL);
     }
 
     public InetSocketAddress getRemoteAddress() {

@@ -187,7 +187,7 @@ class Request {
                 prevCR=false;
                 sol=true;
             } else {
-                if((c==' ' || c=='\t') && sol) {
+                if(sol && (c==' ' || c=='\t')) {
                     pbs.skipWhitespace();
                     inKey=false;
                     sol=false;

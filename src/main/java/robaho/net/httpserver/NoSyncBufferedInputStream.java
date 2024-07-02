@@ -1,7 +1,5 @@
 package robaho.net.httpserver;
 
-import java.util.Arrays;
-import java.util.Objects;
 import java.io.FilterInputStream;
 import java.io.InputStream;
 import java.io.IOException;
@@ -12,9 +10,7 @@ import java.io.OutputStream;
  */
 public class NoSyncBufferedInputStream extends FilterInputStream {
 
-    private static final int DEFAULT_BUFFER_SIZE = 8192;
-
-    protected byte[] buf;
+    protected byte[] buf = new byte[1024];
 
     /**
      * The index one greater than the index of the last valid byte in
@@ -43,49 +39,6 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
      * @see     java.io.BufferedInputStream#buf
      */
     protected int pos;
-
-    /**
-     * The value of the {@code pos} field at the time the last
-     * {@code mark} method was called.
-     * <p>
-     * This value is always
-     * in the range {@code -1} through {@code pos}.
-     * If there is no marked position in  the input
-     * stream, this field is {@code -1}. If
-     * there is a marked position in the input
-     * stream,  then {@code buf[markpos]}
-     * is the first byte to be supplied as input
-     * after a {@code reset} operation. If
-     * {@code markpos} is not {@code -1},
-     * then all bytes from positions {@code buf[markpos]}
-     * through  {@code buf[pos-1]} must remain
-     * in the buffer array (though they may be
-     * moved to  another place in the buffer array,
-     * with suitable adjustments to the values
-     * of {@code count},  {@code pos},
-     * and {@code markpos}); they may not
-     * be discarded unless and until the difference
-     * between {@code pos} and {@code markpos}
-     * exceeds {@code marklimit}.
-     *
-     * @see     java.io.BufferedInputStream#mark(int)
-     * @see     java.io.BufferedInputStream#pos
-     */
-    protected int markpos = -1;
-
-    /**
-     * The maximum read ahead allowed after a call to the
-     * {@code mark} method before subsequent calls to the
-     * {@code reset} method fail.
-     * Whenever the difference between {@code pos}
-     * and {@code markpos} exceeds {@code marklimit},
-     * then the  mark may be dropped by setting
-     * {@code markpos} to {@code -1}.
-     *
-     * @see     java.io.BufferedInputStream#mark(int)
-     * @see     java.io.BufferedInputStream#reset()
-     */
-    protected int marklimit;
 
     /**
      * Check to make sure that underlying input stream has not been
@@ -118,36 +71,8 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
     }
 
 
-    /**
-     * Creates a {@code BufferedInputStream}
-     * and saves its  argument, the input stream
-     * {@code in}, for later use. An internal
-     * buffer array is created and  stored in {@code buf}.
-     *
-     * @param   in   the underlying input stream.
-     */
     public NoSyncBufferedInputStream(InputStream in) {
-        this(in, DEFAULT_BUFFER_SIZE);
-    }
-
-    /**
-     * Creates a {@code BufferedInputStream}
-     * with the specified buffer size,
-     * and saves its  argument, the input stream
-     * {@code in}, for later use.  An internal
-     * buffer array of length  {@code size}
-     * is created and stored in {@code buf}.
-     *
-     * @param   in     the underlying input stream.
-     * @param   size   the buffer size.
-     * @throws  IllegalArgumentException if {@code size <= 0}.
-     */
-    public NoSyncBufferedInputStream(InputStream in, int size) {
         super(in);
-        if (size <= 0) {
-            throw new IllegalArgumentException("Buffer size <= 0");
-        }
-        buf = new byte[size];
     }
 
     /**
@@ -158,24 +83,10 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
      * hence pos > count.
      */
     private void fill() throws IOException {
-        byte[] buffer = getBufIfOpen();
-        if (markpos == -1)
-            pos = 0;            /* no mark: throw away the buffer */
-        else if (pos >= buffer.length) { /* no room left in buffer */
-            if (markpos > 0) {  /* can throw away early part of the buffer */
-                int sz = pos - markpos;
-                System.arraycopy(buffer, markpos, buffer, 0, sz);
-                pos = sz;
-                markpos = 0;
-            } else if (buffer.length >= marklimit) {
-                markpos = -1;   /* buffer got too big, invalidate mark */
-                pos = 0;        /* drop buffer contents */
-            }
-        }
-        count = pos;
-        int n = getInIfOpen().read(buffer, pos, buffer.length - pos);
+        pos = 0;
+        int n = getInIfOpen().read(buf);
         if (n > 0)
-            count = n + pos;
+            count = n;
     }
 
     /**
@@ -206,12 +117,7 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
     private int read1(byte[] b, int off, int len) throws IOException {
         int avail = count - pos;
         if (avail <= 0) {
-            /* If the requested length is at least as large as the buffer, and
-               if there is no mark/reset activity, do not bother to copy the
-               bytes into the local buffer.  In this way buffered streams will
-               cascade harmlessly. */
-            int size = getBufIfOpen().length;
-            if (len >= size && markpos == -1) {
+            if (len >= buf.length) {
                 return getInIfOpen().read(b, off, len);
             }
             fill();
@@ -303,14 +209,7 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
 
         if (avail <= 0) {
             // If no mark position set then don't keep in buffer
-            if (markpos == -1)
-                return getInIfOpen().skip(n);
-
-            // Fill in buffer to save bytes for reset
-            fill();
-            avail = count - pos;
-            if (avail <= 0)
-                return 0;
+            return getInIfOpen().skip(n);
         }
 
         long skipped = (avail < n) ? avail : n;
@@ -344,57 +243,6 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
     }
 
     /**
-     * See the general contract of the {@code mark}
-     * method of {@code InputStream}.
-     *
-     * @param   readlimit   the maximum limit of bytes that can be read before
-     *                      the mark position becomes invalid.
-     * @see     java.io.BufferedInputStream#reset()
-     */
-    public void mark(int readlimit) {
-        marklimit = readlimit;
-        markpos = pos;
-    }
-
-    /**
-     * See the general contract of the {@code reset}
-     * method of {@code InputStream}.
-     * <p>
-     * If {@code markpos} is {@code -1}
-     * (no mark has been set or the mark has been
-     * invalidated), an {@code IOException}
-     * is thrown. Otherwise, {@code pos} is
-     * set equal to {@code markpos}.
-     *
-     * @throws     IOException  if this stream has not been marked or,
-     *                  if the mark has been invalidated, or the stream
-     *                  has been closed by invoking its {@link #close()}
-     *                  method, or an I/O error occurs.
-     * @see        java.io.BufferedInputStream#mark(int)
-     */
-    public void reset() throws IOException {
-        ensureOpen();
-        if (markpos < 0)
-            throw new IOException("Resetting to invalid mark");
-        pos = markpos;
-    }
-
-    /**
-     * Tests if this input stream supports the {@code mark}
-     * and {@code reset} methods. The {@code markSupported}
-     * method of {@code BufferedInputStream} returns
-     * {@code true}.
-     *
-     * @return  a {@code boolean} indicating if this stream type supports
-     *          the {@code mark} and {@code reset} methods.
-     * @see     java.io.InputStream#mark(int)
-     * @see     java.io.InputStream#reset()
-     */
-    public boolean markSupported() {
-        return true;
-    }
-
-    /**
      * Closes this input stream and releases any system resources
      * associated with the stream.
      * Once the stream has been closed, further read(), available(), reset(),
@@ -414,9 +262,7 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
     public long transferTo(OutputStream out) throws IOException {
         int avail = count - pos;
         if (avail > 0) {
-            // Prevent poisoning and leaking of buf
-            byte[] buffer = Arrays.copyOfRange(getBufIfOpen(), pos, count);
-            out.write(buffer,pos,count-pos);
+            out.write(buf,pos,count-pos);
             pos = count;
         }
         return super.transferTo(out);
