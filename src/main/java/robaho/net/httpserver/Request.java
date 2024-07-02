@@ -28,7 +28,6 @@ package robaho.net.httpserver;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 
 import com.sun.net.httpserver.Headers;
 
@@ -88,21 +87,21 @@ class Request {
 
     // efficient building of trimmed strings
     static class StrBuilder {
-        private byte buffer[] = new byte[128];
+        private char buffer[] = new char[32];
         private int count=0;
         public void append(int c) {
             if(count==0 && c==' ') return;
             if(count==buffer.length) {
-                byte tmp[] = new byte[buffer.length*2];
+                char tmp[] = new char[buffer.length*2];
                 System.arraycopy(buffer,0,tmp,0,count);
                 buffer=tmp;
             }
-            buffer[count++]=(byte)c;
+            buffer[count++]=(char)c;
         }
         @Override
         public String toString() {
             while(count>0 && buffer[count-1]==' ') count--;
-            return new String(buffer,0,count,StandardCharsets.ISO_8859_1);
+            return new String(buffer,0,count);
         }
         public boolean isEmpty() {
             return count==0;
@@ -117,7 +116,7 @@ class Request {
      * Not used for reading headers.
      */
     private String readLine() throws IOException {
-        StringBuilder lineBuf = new StringBuilder();
+        StrBuilder lineBuf = new StrBuilder();
 
         boolean gotCR = false;
         while (true) {
@@ -126,7 +125,7 @@ class Request {
             try {
                 c = is.read();
             } catch(IOException e) {
-                if(lineBuf.length()==0) return null;
+                if(lineBuf.isEmpty()) return null;
                 throw e;
             }
 
@@ -135,17 +134,17 @@ class Request {
             }
             if (gotCR) {
                 if (c == LF) {
-                    return new String(lineBuf);
+                    return lineBuf.toString();
                 } else {
                     gotCR = false;
                     lineBuf.append(CR);
-                    lineBuf.append((char)c);
+                    lineBuf.append(c);
                 }
             } else {
                 if (c == CR) {
                     gotCR = true;
                 } else {
-                    lineBuf.append((char)c);
+                    lineBuf.append(c);
                 }
             }
         }
