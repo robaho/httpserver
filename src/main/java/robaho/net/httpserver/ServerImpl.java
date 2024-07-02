@@ -742,7 +742,6 @@ class ServerImpl {
 
         @Override
         public void run() {
-            Set<HttpConnection> idle = new HashSet();
             final long currentTime = System.currentTimeMillis();
 
             for (var c : allConnections) {
