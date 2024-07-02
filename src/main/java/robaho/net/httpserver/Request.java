@@ -28,6 +28,7 @@ package robaho.net.httpserver;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 import com.sun.net.httpserver.Headers;
 
@@ -87,21 +88,21 @@ class Request {
 
     // efficient building of trimmed strings
     static class StrBuilder {
-        private char buffer[] = new char[128];
+        private byte buffer[] = new byte[128];
         private int count=0;
         public void append(int c) {
             if(count==0 && c==' ') return;
             if(count==buffer.length) {
-                char tmp[] = new char[buffer.length*2];
+                byte tmp[] = new byte[buffer.length*2];
                 System.arraycopy(buffer,0,tmp,0,count);
                 buffer=tmp;
             }
-            buffer[count++]=(char)c;
+            buffer[count++]=(byte)c;
         }
         @Override
         public String toString() {
             while(count>0 && buffer[count-1]==' ') count--;
-            return new String(buffer,0,count);
+            return new String(buffer,0,count,StandardCharsets.ISO_8859_1);
         }
         public boolean isEmpty() {
             return count==0;
