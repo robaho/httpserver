@@ -86,8 +86,14 @@ class FixedLengthOutputStream extends FilterOutputStream {
             t.close();
             throw new IOException("insufficient bytes written to stream");
         }
-        flush();
         LeftOverInputStream is = t.getOriginalInputStream();
+        // if after reading the rest of the known input for this request, there is
+        // more input available, http pipelining is in effect, so avoid flush, since
+        // it will be flushed after processing the next request
+        if(remaining==0 && is.getRawInputStream().available()==0) {
+            flush();
+        }
+
         if (!is.isClosed()) {
             try {
                 is.close();
@@ -95,6 +101,4 @@ class FixedLengthOutputStream extends FilterOutputStream {
             }
         }
     }
-
-    // flush is a pass-through
 }

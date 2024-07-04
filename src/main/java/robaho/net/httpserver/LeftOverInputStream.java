@@ -113,4 +113,7 @@ abstract class LeftOverInputStream extends FilterInputStream {
         }
         return false;
     }
+    public InputStream getRawInputStream() {
+        return super.in;
+    }
 }
