@@ -89,6 +89,8 @@ abstract class LeftOverInputStream extends FilterInputStream {
         return readImpl(b, off, len);
     }
 
+    // ok to concurrently share this since the data isn't used
+    private static final byte[] drainBuffer = new byte[2048];
     /**
      * read and discard up to l bytes or "eof" occurs,
      * (whichever is first). Then return true if the stream
@@ -96,13 +98,12 @@ abstract class LeftOverInputStream extends FilterInputStream {
      * (still bytes to be read)
      */
     public boolean drain(long l) throws IOException {
-        int bufSize = 2048;
-        byte[] db = new byte[bufSize];
+
         while (l > 0) {
             if (server.isFinishing()) {
                 break;
             }
-            long len = readImpl(db, 0, bufSize);
+            long len = readImpl(drainBuffer, 0, drainBuffer.length);
             if (len == -1) {
                 eof = true;
                 return true;
