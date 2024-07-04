@@ -59,7 +59,7 @@ public abstract class WebSocketHandler implements HttpHandler {
     public static boolean isWebsocketRequested(Headers headers) {
         // check if Upgrade connection
         String connection = headers.getFirst(Util.HEADER_CONNECTION);
-        if (connection == null || !connection.toLowerCase().contains(Util.HEADER_CONNECTION_VALUE.toLowerCase())) {
+        if (connection == null || !connection.equalsIgnoreCase(Util.HEADER_CONNECTION_VALUE)) {
             return false;
         }
         // check for proper upgrade tyoe
