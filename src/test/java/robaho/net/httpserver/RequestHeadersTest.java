@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 import org.testng.annotations.Test;
 
 public class RequestHeadersTest {
@@ -15,7 +16,7 @@ public class RequestHeadersTest {
         var os = new ByteArrayOutputStream();
 
         Request r = new Request(is,os);
-        assertEquals(r.requestLine(),"GET blah");
+        assertTrue("GET blah".contentEquals(r.requestLine()));
         assertEquals(r.headers().getFirst("KEY"),"VALUE");
     }
     @Test
@@ -25,7 +26,7 @@ public class RequestHeadersTest {
         var os = new ByteArrayOutputStream();
 
         Request r = new Request(is,os);
-        assertEquals(r.requestLine(),"GET blah");
+        assertTrue("GET blah".contentEquals(r.requestLine()));
         assertEquals(r.headers().getFirst("KEY"),"VAL2");
     }
     @Test
@@ -35,7 +36,7 @@ public class RequestHeadersTest {
         var os = new ByteArrayOutputStream();
 
         Request r = new Request(is,os);
-        assertEquals(r.requestLine(),"GET blah");
+        assertTrue("GET blah".contentEquals(r.requestLine()));
         assertEquals(r.headers().getFirst("KEY"),"VAL");
         assertEquals(r.headers().getFirst("KEY2"),"VAL2");
     }
@@ -46,7 +47,7 @@ public class RequestHeadersTest {
         var os = new ByteArrayOutputStream();
 
         Request r = new Request(is,os);
-        assertEquals(r.requestLine(),"GET blah");
+        assertTrue("GET blah".contentEquals(r.requestLine()));
         assertEquals(r.headers().getFirst("KEY"),"VAL");
         assertEquals(r.headers().getFirst("KEY2"),"VAL2");
     }
@@ -57,7 +58,7 @@ public class RequestHeadersTest {
         var os = new ByteArrayOutputStream();
 
         Request r = new Request(is,os);
-        assertEquals(r.requestLine(),"GET blah");
+        assertTrue("GET blah".contentEquals(r.requestLine()));
         assertEquals(r.headers().getFirst("KEY"),"VAL");
         assertEquals(r.headers().getFirst("KEY2"),"VAL2");
     }
