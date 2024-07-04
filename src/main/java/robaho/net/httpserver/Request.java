@@ -28,6 +28,8 @@ package robaho.net.httpserver;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import com.sun.net.httpserver.Headers;
 
@@ -38,17 +40,16 @@ class Request {
     static final char CR = 13;
     static final char LF = 10;
 
-    private String startLine;
     private final InputStream is;
     private final OutputStream os;
+
+    private final StringBuilder requestLine = new StringBuilder(64);
 
     Request(InputStream rawInputStream, OutputStream rawout) throws IOException {
         is = rawInputStream;
         os = rawout;
-        do {
-            startLine = readLine();
-            /* skip blank lines */
-        } while ("".equals(startLine));
+
+        readRequestLine();
     }
 
     public InputStream inputStream() {
@@ -85,39 +86,11 @@ class Request {
         }
     }
 
-    // efficient building of trimmed strings
-    static class StrBuilder {
-        private char buffer[] = new char[32];
-        private int count=0;
-        public void append(int c) {
-            if(count==0 && c==' ') return;
-            if(count==buffer.length) {
-                char tmp[] = new char[buffer.length*2];
-                System.arraycopy(buffer,0,tmp,0,count);
-                buffer=tmp;
-            }
-            buffer[count++]=(char)c;
-        }
-        @Override
-        public String toString() {
-            while(count>0 && buffer[count-1]==' ') count--;
-            return new String(buffer,0,count);
-        }
-        public boolean isEmpty() {
-            return count==0;
-        }
-        public void clear() {
-            count=0;
-        }
-    }
-    
     /**
      * read a line from the stream returning as a String.
      * Not used for reading headers.
      */
-    private String readLine() throws IOException {
-        StrBuilder lineBuf = new StrBuilder();
-
+    private boolean readLine(StringBuilder lineBuf) throws IOException {
         boolean gotCR = false;
         while (true) {
             int c;
@@ -125,39 +98,79 @@ class Request {
             try {
                 c = is.read();
             } catch(IOException e) {
-                if(lineBuf.isEmpty()) return null;
+                if(lineBuf.isEmpty()) return false;
                 throw e;
             }
 
             if (c == -1) {
-                return null;
+                lineBuf.setLength(0);
+                return false;
             }
             if (gotCR) {
                 if (c == LF) {
-                    return lineBuf.toString();
+                    return true;
                 } else {
                     gotCR = false;
                     lineBuf.append(CR);
-                    lineBuf.append(c);
+                    lineBuf.append((char)c);
                 }
             } else {
                 if (c == CR) {
                     gotCR = true;
                 } else {
-                    lineBuf.append(c);
+                    lineBuf.append((char)c);
                 }
             }
         }
     }
 
     /**
-     * returns the request line (first line of a request)
+     * read the request line into the buffer
      */
-    public String requestLine() {
-        return startLine;
+    private void readRequestLine() throws IOException {
+        while(readLine(requestLine)) {
+            if(requestLine.length()>0) return;
+        }
+    }
+
+    /** return trimmed value from StringBuilder and reset to empty */
+    private static String trimmed(BufferedBuilder bb) {
+        return bb.trimmed();
+    }
+
+    /**
+     * @returns the request line or the empty string if not found
+     */
+    public StringBuilder requestLine() {
+        return requestLine;
     }
 
     Headers hdrs = null;
+
+    private static final class BufferedBuilder {
+        private byte[] buffer;
+        private int count;
+        BufferedBuilder(int capacity) {
+            buffer = new byte[capacity];
+        }
+        boolean isEmpty() {
+            return count==0;
+        }
+        void append(char c) {
+            if(count==buffer.length) {
+                buffer = Arrays.copyOf(buffer, buffer.length*2);
+            }
+            buffer[count++]=(byte)c;
+        }
+        public String trimmed() {
+            int start=0;
+            while(start<count && buffer[start]==' ') start++;
+            int end=count;
+            while(end>0 && buffer[end-1]==' ') end--;
+            count=0;
+            return new String(buffer,start,end-start,StandardCharsets.ISO_8859_1);
+        }
+    }
 
     @SuppressWarnings("fallthrough")
     Headers headers() throws IOException {
@@ -166,12 +179,12 @@ class Request {
         }
         hdrs = new Headers();
 
-        StrBuilder key = new StrBuilder();
-        StrBuilder value = new StrBuilder();
+        BufferedBuilder key = new BufferedBuilder(32);
+        BufferedBuilder value = new BufferedBuilder(128);
 
         PushbackStream pbs = new PushbackStream(is);
 
-        boolean inKey = true;
+        BufferedBuilder current = key;
         boolean prevCR = false;
         boolean sol = true;
         int c;
@@ -181,7 +194,7 @@ class Request {
             else if(c==LF && prevCR) {
                 if(key.isEmpty() && value.isEmpty()) break;
                 if(sol) {
-                    hdrs.add(key.toString(),value.toString());
+                    hdrs.add(trimmed(key),trimmed(value));
                     break;
                 }
                 prevCR=false;
@@ -189,23 +202,21 @@ class Request {
             } else {
                 if(sol && (c==' ' || c=='\t')) {
                     pbs.skipWhitespace();
-                    inKey=false;
+                    current=value;
                     sol=false;
                 } else {
                     if(sol) {
                         if(!key.isEmpty() || !value.isEmpty()) {
-                            hdrs.add(key.toString(),value.toString());
-                            key.clear();
-                            value.clear();
+                            hdrs.add(trimmed(key),trimmed(value));
                         }
-                        inKey=true;
+                        current=key;
                         sol=false;
                     }
-                    if(c==':' && inKey) {
-                        inKey=false;
+                    if(c==':' && current==key) {
+                        current=value;
                         pbs.skipWhitespace();
                     } else {
-                        (inKey ? key : value).append(c);
+                        current.append((char)c);
                     }
                 }
             }

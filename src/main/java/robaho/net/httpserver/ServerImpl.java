@@ -484,7 +484,7 @@ class ServerImpl {
 
             connection.inRequest = false;
             Request req = new Request(rawin, rawout);
-            final String requestLine = req.requestLine();
+            final StringBuilder requestLine = req.requestLine();
             connection.inRequest = true;
 
             if (requestLine == null) {
@@ -497,7 +497,7 @@ class ServerImpl {
             requestCount.incrementAndGet();
 
             logger.log(Level.DEBUG, () -> "Exchange request line: "+ requestLine);
-            int space = requestLine.indexOf(' ');
+            int space = requestLine.indexOf(" ");
             if (space == -1) {
                 reject(Code.HTTP_BAD_REQUEST,
                         requestLine, "Bad request line");
@@ -505,7 +505,7 @@ class ServerImpl {
             }
             String method = requestLine.substring(0, space);
             int start = space + 1;
-            space = requestLine.indexOf(' ', start);
+            space = requestLine.indexOf(" ", start);
             if (space == -1) {
                 reject(Code.HTTP_BAD_REQUEST,
                         requestLine, "Bad request line");
@@ -664,7 +664,7 @@ class ServerImpl {
             }
         }
 
-        void reject(int code, String requestStr, String message) {
+        void reject(int code, StringBuilder requestStr, String message) {
             logReply(code, requestStr, message);
             sendReply(
                     code, true, "<h1>" + code + Code.msg(code) + "</h1>" + message);
@@ -689,9 +689,7 @@ class ServerImpl {
                     builder.append("Connection: close\r\n");
                 }
                 builder.append("\r\n").append(text);
-                String s = builder.toString();
-                byte[] b = s.getBytes(ISO_8859_1);
-                rawout.write(b);
+                rawout.write(builder.toString().getBytes(ISO_8859_1));
                 rawout.flush();
                 if (closeNow) {
                     closeConnection(connection);
@@ -705,21 +703,17 @@ class ServerImpl {
 
     }
 
-    void logReply(int code, String requestStr, String text) {
+    void logReply(int code, StringBuilder requestStr, String text) {
         if (!logger.isLoggable(Level.DEBUG)) {
             return;
         }
-        if (text == null) {
-            text = "";
-        }
-        String r;
+        CharSequence r;
         if (requestStr.length() > 80) {
             r = requestStr.substring(0, 80) + "<TRUNCATED>";
         } else {
             r = requestStr;
         }
-        logger.log(Level.DEBUG, "reply "+ r + " [" + code + " "
-                + Code.msg(code) + "] (" + text + ")");
+        logger.log(Level.DEBUG, () -> "reply "+ r + " [" + code + " " + Code.msg(code) + "] (" + (text!=null ? text : "") + ")");
     }
 
     void delay() {

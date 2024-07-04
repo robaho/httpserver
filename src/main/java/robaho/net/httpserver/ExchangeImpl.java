@@ -302,15 +302,19 @@ class ExchangeImpl {
         // to the response header. Nothing to do if the exchange is
         // already set up to be closed.
         if (!close) {
-            Stream<String> conheader = Optional.ofNullable(rspHdrs.get("Connection"))
-                    .map(List::stream).orElse(Stream.empty());
-            if (conheader.anyMatch("close"::equalsIgnoreCase)) {
-                logger.log(Level.DEBUG, "Connection: close requested by handler");
-                close = true;
+            List<String> values = rspHdrs.get("Connection");
+            if(values!=null) {
+                for(var val : values) {
+                    if(val.equalsIgnoreCase("close")) {
+                        logger.log(Level.DEBUG, "Connection: close requested by handler");
+                        close=true;
+                        break;
+                    }
+                }
             }
         }
 
-        write(rspHdrs, ros);
+        writeHeaders(rspHdrs, ros);
         this.rspContentLen = contentLen;
         sentHeaders = true;
         if(logger.isLoggable(Level.TRACE)) {
@@ -326,22 +330,24 @@ class ExchangeImpl {
     }
 
     static final Charset ISO_CHARSET = StandardCharsets.ISO_8859_1;
-    static final byte[] colonSpace = ": ".getBytes(ISO_CHARSET);
-    static final byte[] CRNL = "\r\n".getBytes(ISO_CHARSET);
+    static final String colonSpace = ": ";
+    static final String CRNL = "\r\n";
 
-    void write(Headers map, OutputStream os) throws IOException {
+    void writeHeaders(Headers map, OutputStream os) throws IOException {
+        StringBuilder sb = new StringBuilder(128*map.size());
         Set<Map.Entry<String, List<String>>> entries = map.entrySet();
         for (Map.Entry<String, List<String>> entry : entries) {
             String key = entry.getKey();
             List<String> values = entry.getValue();
             for (String val : values) {
-                os.write(key.getBytes(ISO_CHARSET));
-                os.write(colonSpace);
-                os.write(val.getBytes(ISO_CHARSET));
-                os.write(CRNL);
+                sb.append(Objects.requireNonNull(key));
+                sb.append(colonSpace);
+                sb.append(Objects.requireNonNull(val));
+                sb.append(CRNL);
             }
         }
-        os.write(CRNL);
+        sb.append(CRNL);
+        os.write(sb.toString().getBytes(ISO_CHARSET));
     }
 
     public InetSocketAddress getRemoteAddress() {
@@ -359,8 +365,8 @@ class ExchangeImpl {
     }
 
     public String getProtocol() {
-        String reqline = req.requestLine();
-        int index = reqline.lastIndexOf(' ');
+        StringBuilder reqline = req.requestLine();
+        int index = reqline.lastIndexOf(" ");
         return reqline.substring(index + 1);
     }
 
