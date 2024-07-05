@@ -223,10 +223,6 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
      * the same thread or another thread.  A single read or skip of this
      * many bytes will not block, but may read or skip fewer bytes.
      * <p>
-     * This method returns the sum of the number of bytes remaining to be read in
-     * the buffer ({@code count - pos}) and the result of calling the
-     * {@link java.io.FilterInputStream#in in}{@code .available()}.
-     *
      * @return     an estimate of the number of bytes that can be read (or skipped
      *             over) from this input stream without blocking.
      * @throws     IOException  if this input stream has been closed by
@@ -234,11 +230,13 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
      *                          or an I/O error occurs.
      */
     public int available() throws IOException {
+        if (in == null)
+            throw new IOException("Stream closed");
+        // since it is an estimate, avoid calling underlying stream if the buffer
+        // has some bytes
         int n = count - pos;
-        int avail = getInIfOpen().available();
-        return n > (Integer.MAX_VALUE - avail)
-                    ? Integer.MAX_VALUE
-                    : n + avail;
+        if(n>0) return n;
+        return getInIfOpen().available();
     }
 
     /**
