@@ -8,7 +8,7 @@ It has basic server-side proxy support using [ProxyHandler](https://github.com/r
 
 ProxyHandler also supports tunneling proxies using CONNECT for https.
 
-All async functionality has been removed. Most synchronized blocks were removed in favor of other Java concurrency concepts.
+All async functionality has been removed. All synchronized blocks were removed in favor of other Java concurrency concepts.
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
 
