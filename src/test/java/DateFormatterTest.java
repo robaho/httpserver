@@ -103,7 +103,7 @@ public class DateFormatterTest {
             if (date.equals("null"))
                 fail("Date not present");
             Matcher matcher = pattern.matcher(date);
-            assertTrue(matcher.matches());
+            assertTrue(matcher.matches(),date);
         }
     }
 

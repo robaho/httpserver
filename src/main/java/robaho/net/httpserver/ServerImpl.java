@@ -150,6 +150,7 @@ class ServerImpl {
         dispatcher = new Dispatcher();
         timer = new Timer("connection-cleaner", true);
         timer.schedule(new ConnectionCleanerTask(), IDLE_TIMER_TASK_SCHEDULE, IDLE_TIMER_TASK_SCHEDULE);
+        timer.schedule(ActivityTimer.createTask(),750);
         logger.log(Level.DEBUG, "HttpServer created " + protocol + " " + addr);
         if(Boolean.getBoolean("robaho.net.httpserver.EnableStats")) {
             createContext("/__stats",new StatsHandler());
@@ -736,18 +737,18 @@ class ServerImpl {
 
         @Override
         public void run() {
-            final long currentTime = System.currentTimeMillis();
+            long now = ActivityTimer.now();
 
             for (var c : allConnections) {
-                if (currentTime - c.lastActivityTime >= IDLE_INTERVAL && !c.inRequest) {
+                if (now- c.lastActivityTime >= IDLE_INTERVAL && !c.inRequest) {
                     logger.log(Level.DEBUG, "closing idle connection");
                     idleCloseCount.incrementAndGet();
                     closeConnection(c);
                     // idle.add(c);
-                } else if (c.noActivity && (currentTime - c.lastActivityTime >= NEWLY_ACCEPTED_CONN_IDLE_INTERVAL)) {
+                } else if (c.noActivity && (now - c.lastActivityTime >= NEWLY_ACCEPTED_CONN_IDLE_INTERVAL)) {
                     logger.log(Level.WARNING, "closing newly accepted idle connection");
                     closeConnection(c);
-                } else if (MAX_REQ_TIME != -1 && c.inRequest && (currentTime - c.lastActivityTime >= MAX_REQ_TIME)) {
+                } else if (MAX_REQ_TIME != -1 && c.inRequest && (now - c.lastActivityTime >= MAX_REQ_TIME)) {
                     logger.log(Level.WARNING, "closing connection due to request processing time");
                     closeConnection(c);
                 }

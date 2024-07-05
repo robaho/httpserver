@@ -25,7 +25,6 @@
 
 package robaho.net.httpserver;
 
-import java.io.BufferedOutputStream;
 import java.io.FilterInputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
@@ -144,7 +143,7 @@ class HttpConnection {
 
         private ActivityTimerInputStream(InputStream inputStream) {
             super(inputStream);
-            lastActivityTime = System.currentTimeMillis();
+            lastActivityTime = ActivityTimer.now();
         }
 
         @Override
@@ -152,7 +151,7 @@ class HttpConnection {
             try {
                 return super.read();
             } finally {
-                lastActivityTime = System.currentTimeMillis();
+                lastActivityTime = ActivityTimer.now();
             }
         }
 
@@ -161,7 +160,7 @@ class HttpConnection {
             try {
                 return super.skip(n);
             } finally {
-                lastActivityTime = System.currentTimeMillis();
+                lastActivityTime = ActivityTimer.now();
             }
         }
 
@@ -170,7 +169,7 @@ class HttpConnection {
             try {
                 return super.read(b, off, len);
             } finally {
-                lastActivityTime = System.currentTimeMillis();
+                lastActivityTime = ActivityTimer.now();
             }
         }
 
@@ -180,14 +179,14 @@ class HttpConnection {
 
         private ActivityTimerOutputStream(OutputStream outputStream) {
             super(outputStream);
-            lastActivityTime = System.currentTimeMillis();
+            lastActivityTime = ActivityTimer.now();
         }
         @Override
         public void write(int b) throws IOException {
             try {
                 out.write(b);
             } finally {
-                lastActivityTime = System.currentTimeMillis();
+                lastActivityTime = ActivityTimer.now();
             }
         }
 
@@ -196,7 +195,7 @@ class HttpConnection {
             try {
                 out.write(b, off, len);
             } finally {
-                lastActivityTime = System.currentTimeMillis();
+                lastActivityTime = ActivityTimer.now();
             }
         }
     }

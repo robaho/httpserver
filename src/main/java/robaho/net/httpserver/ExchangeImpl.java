@@ -27,7 +27,9 @@ package robaho.net.httpserver;
 
 import java.io.*;
 import java.net.*;
+
 import javax.net.ssl.*;
+
 import java.util.*;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
@@ -35,8 +37,11 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.stream.Stream;
+
 import com.sun.net.httpserver.*;
 
 import robaho.net.httpserver.websockets.WebSocketHandler;
@@ -216,6 +221,8 @@ class ExchangeImpl {
         return uos_orig;
     }
 
+    // hard-coded formatting for Date header, rather than using slower DateFormatter
+    
     public void sendResponseHeaders(int rCode, long contentLen)
             throws IOException {
         final Logger logger = getServerImpl().getLogger();
@@ -229,7 +236,7 @@ class ExchangeImpl {
         ros.write(statusLine.getBytes(ISO_CHARSET));
         boolean noContentToSend = false; // assume there is content
         boolean noContentLengthHeader = false; // must not send Content-length is set
-        rspHdrs.set("Date", FORMATTER.format(Instant.now()));
+        rspHdrs.set("Date", ActivityTimer.dateAndTime());
 
         if (this.getAttribute(Attributes.SOCKET_WRITE_BUFFER) != null) {
             int bufferSize = (Integer) this.getAttribute(Attributes.SOCKET_WRITE_BUFFER);
