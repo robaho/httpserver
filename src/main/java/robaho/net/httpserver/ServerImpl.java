@@ -150,7 +150,7 @@ class ServerImpl {
         dispatcher = new Dispatcher();
         timer = new Timer("connection-cleaner", true);
         timer.schedule(new ConnectionCleanerTask(), IDLE_TIMER_TASK_SCHEDULE, IDLE_TIMER_TASK_SCHEDULE);
-        timer.schedule(ActivityTimer.createTask(),750);
+        timer.schedule(ActivityTimer.createTask(),750,750);
         logger.log(Level.DEBUG, "HttpServer created " + protocol + " " + addr);
         if(Boolean.getBoolean("robaho.net.httpserver.EnableStats")) {
             createContext("/__stats",new StatsHandler());
