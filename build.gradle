@@ -4,7 +4,7 @@ plugins {
     id 'signing'
 }
 
-group = 'robaho.net'
+group = 'io.github.robaho'
 version = System.getenv("RELEASE_VERSION")
 
 repositories {
