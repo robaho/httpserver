@@ -4,9 +4,6 @@ plugins {
     id 'signing'
 }
 
-group = 'io.github.robaho'
-version = System.getenv("RELEASE_VERSION")
-
 repositories {
     mavenCentral() 
 }
@@ -149,18 +146,57 @@ publish {
 
 publishing {
     publications {
-        gpr(MavenPublication) {
-            from(components.java)
+        maven(MavenPublication) {
+            groupId = 'io.github.robaho'
+            artifactId = 'httpserver'
+            version = "1.0.7"
+
+            from components.java
+
+            pom {
+                name = 'HttpServer'
+                description = 'A zero dependency implements of the JDK httpserver designed for Virtual Threads. Includes websocket support.'
+
+                signing {
+                    sign publishing.publications.maven
+                    sign configurations.archives
+                }
+
+                url = 'https://github.com/robaho/httpserver'
+
+                scm {
+                    url = 'https://github.com/robaho/httpserver.git'
+                }
+
+                licenses {
+                    license {
+                        name = 'gnu v2.0'
+                        url = 'https://www.gnu.org/licenses/old-licenses/gpl-2.0.html'
+                    }
+                    license {
+                        name = 'nanohttpd'
+                        url = 'https://github.com/NanoHttpd/nanohttpd/blob/efb2ebf85a2b06f7c508aba9eaad5377e3a01e81/LICENSE.md'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'robaho'
+                        name = 'Robert Engels'
+                        email = 'robaho@me.com'
+                    }
+                }
+            }
         }
     }
     repositories {
         maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/robaho/httpserver")
+        name = "OSSRH"
+        url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
             credentials {
-                username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
-                password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
-            }
+                username = "$maven_user"
+                password = "$maven_password"
+            }            
         }
     }
 }
