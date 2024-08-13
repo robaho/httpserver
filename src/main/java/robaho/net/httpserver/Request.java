@@ -43,13 +43,13 @@ class Request {
     private final InputStream is;
     private final OutputStream os;
 
-    private final StringBuilder requestLine = new StringBuilder(64);
+    private final String requestLine;
 
     Request(InputStream rawInputStream, OutputStream rawout) throws IOException {
         is = rawInputStream;
         os = rawout;
 
-        readRequestLine();
+        requestLine = readRequestLine();
     }
 
     public InputStream inputStream() {
@@ -90,7 +90,7 @@ class Request {
      * read a line from the stream returning as a String.
      * Not used for reading headers.
      */
-    private boolean readLine(StringBuilder lineBuf) throws IOException {
+    private boolean readLine(BufferedBuilder lineBuf) throws IOException {
         boolean gotCR = false;
         while (true) {
             int c;
@@ -103,7 +103,7 @@ class Request {
             }
 
             if (c == -1) {
-                lineBuf.setLength(0);
+                lineBuf.count=0;
                 return false;
             }
             if (gotCR) {
@@ -127,10 +127,12 @@ class Request {
     /**
      * read the request line into the buffer
      */
-    private void readRequestLine() throws IOException {
-        while(readLine(requestLine)) {
-            if(requestLine.length()>0) return;
+    private String readRequestLine() throws IOException {
+        final BufferedBuilder bb = new BufferedBuilder(64);
+        while(readLine(bb)) {
+            if(!bb.isEmpty()) break;
         }
+        return bb.trimmed();
     }
 
     /** return trimmed value from StringBuilder and reset to empty */
@@ -141,7 +143,7 @@ class Request {
     /**
      * @returns the request line or the empty string if not found
      */
-    public StringBuilder requestLine() {
+    public String requestLine() {
         return requestLine;
     }
 
@@ -149,16 +151,19 @@ class Request {
 
     private static final class BufferedBuilder {
         private byte[] buffer;
+        private int capacity;
         private int count;
         BufferedBuilder(int capacity) {
             buffer = new byte[capacity];
+            this.capacity=capacity;
         }
         boolean isEmpty() {
             return count==0;
         }
         void append(char c) {
-            if(count==buffer.length) {
-                buffer = Arrays.copyOf(buffer, buffer.length*2);
+            if(count==capacity) {
+                capacity *= 2;
+                buffer = Arrays.copyOf(buffer, capacity);
             }
             buffer[count++]=(byte)c;
         }

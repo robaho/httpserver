@@ -485,7 +485,7 @@ class ServerImpl {
 
             connection.inRequest = false;
             Request req = new Request(rawin, rawout);
-            final StringBuilder requestLine = req.requestLine();
+            final String requestLine = req.requestLine();
             connection.inRequest = true;
 
             if (requestLine == null) {
@@ -524,14 +524,14 @@ class ServerImpl {
             start = space + 1;
             String version = requestLine.substring(start);
             Headers headers = req.headers();
-            /* check key for illegal characters */
-            for (var k : headers.keySet()) {
-                if (!isValidName(k)) {
-                    reject(Code.HTTP_BAD_REQUEST, requestLine,
-                            "Header key contains illegal characters");
-                    return;
-                }
-            }
+            /* check key for illegal characters, impossible since Headers class validates on mutation */
+            // for (var k : headers.keySet()) {
+            //     if (!isValidName(k)) {
+            //         reject(Code.HTTP_BAD_REQUEST, requestLine,
+            //                 "Header key contains illegal characters");
+            //         return;
+            //     }
+            // }
             /* checks for unsupported combinations of lengths and encodings */
             if (headers.containsKey("Content-Length")
                     && (headers.containsKey("Transfer-encoding") || headers.get("Content-Length").size() > 1)) {
@@ -665,7 +665,7 @@ class ServerImpl {
             }
         }
 
-        void reject(int code, StringBuilder requestStr, String message) {
+        void reject(int code, String requestStr, String message) {
             logReply(code, requestStr, message);
             sendReply(
                     code, true, "<h1>" + code + Code.msg(code) + "</h1>" + message);
@@ -704,7 +704,7 @@ class ServerImpl {
 
     }
 
-    void logReply(int code, StringBuilder requestStr, String text) {
+    void logReply(int code, String requestStr, String text) {
         if (!logger.isLoggable(Level.DEBUG)) {
             return;
         }
