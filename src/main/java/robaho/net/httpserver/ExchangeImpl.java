@@ -238,8 +238,8 @@ class ExchangeImpl {
         boolean noContentLengthHeader = false; // must not send Content-length is set
         rspHdrs.set("Date", ActivityTimer.dateAndTime());
 
-        if (this.getAttribute(Attributes.SOCKET_WRITE_BUFFER) != null) {
-            int bufferSize = (Integer) this.getAttribute(Attributes.SOCKET_WRITE_BUFFER);
+        Integer bufferSize = (Integer)this.getAttribute(Attributes.SOCKET_WRITE_BUFFER);
+        if(bufferSize!=null) {
             getConnection().getSocket().setOption(StandardSocketOptions.SO_SNDBUF, bufferSize);
         }
 
@@ -372,7 +372,7 @@ class ExchangeImpl {
     }
 
     public String getProtocol() {
-        StringBuilder reqline = req.requestLine();
+        String reqline = req.requestLine();
         int index = reqline.lastIndexOf(" ");
         return reqline.substring(index + 1);
     }
