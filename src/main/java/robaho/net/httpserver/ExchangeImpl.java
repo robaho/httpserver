@@ -340,21 +340,21 @@ class ExchangeImpl {
     static final String colonSpace = ": ";
     static final String CRNL = "\r\n";
 
+    private static void outputAscii(String s,OutputStream os) throws IOException {
+        os.write(s.getBytes(ISO_CHARSET));
+    }
+
     void writeHeaders(Headers map, OutputStream os) throws IOException {
-        StringBuilder sb = new StringBuilder(128*map.size());
-        Set<Map.Entry<String, List<String>>> entries = map.entrySet();
-        for (Map.Entry<String, List<String>> entry : entries) {
+        for (Map.Entry<String, List<String>> entry : map.entrySet()) {
             String key = entry.getKey();
-            List<String> values = entry.getValue();
-            for (String val : values) {
-                sb.append(Objects.requireNonNull(key));
-                sb.append(colonSpace);
-                sb.append(Objects.requireNonNull(val));
-                sb.append(CRNL);
+            for (String val : entry.getValue()) {
+                outputAscii(key,os);
+                outputAscii(colonSpace,os);
+                outputAscii(val,os);
+                outputAscii(CRNL,os);
             }
         }
-        sb.append(CRNL);
-        os.write(sb.toString().getBytes(ISO_CHARSET));
+        outputAscii(CRNL,os);
     }
 
     public InetSocketAddress getRemoteAddress() {
