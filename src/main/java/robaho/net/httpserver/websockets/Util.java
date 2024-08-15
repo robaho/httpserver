@@ -43,11 +43,11 @@ import com.sun.net.httpserver.HttpExchange;
 
 public class Util {
 
-    public static final String HEADER_UPGRADE = "upgrade";
+    public static final String HEADER_UPGRADE = "Upgrade";
 
     public static final String HEADER_UPGRADE_VALUE = "websocket";
 
-    public static final String HEADER_CONNECTION = "connection";
+    public static final String HEADER_CONNECTION = "Connection";
 
     public static final String HEADER_CONNECTION_VALUE = "Upgrade";
 
@@ -75,7 +75,7 @@ public class Util {
         return encodeBase64(sha1hash);
     }
 
-    private static final String CONTENT_TYPE = "content-type";
+    private static final String CONTENT_TYPE = "Content-type";
 
     public static void sendResponseHeaders(HttpExchange exchange, int code, String reason) throws IOException {
         var bytes = reason.getBytes();

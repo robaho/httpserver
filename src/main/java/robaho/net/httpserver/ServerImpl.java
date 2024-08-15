@@ -417,7 +417,7 @@ class ServerImpl {
     }
 
     private void closeConnection(HttpConnection conn) {
-        logger.log(Level.TRACE, "closing connection: " + conn.toString());
+        logger.log(Level.TRACE, () -> "closing connection: " + conn.toString());
         conn.close();
         allConnections.remove(conn);
     }
@@ -533,8 +533,8 @@ class ServerImpl {
             //     }
             // }
             /* checks for unsupported combinations of lengths and encodings */
-            if (headers.containsKey("Content-Length")
-                    && (headers.containsKey("Transfer-encoding") || headers.get("Content-Length").size() > 1)) {
+            if (headers.containsKey("Content-length")
+                    && (headers.containsKey("Transfer-encoding") || headers.get("Content-length").size() > 1)) {
                 reject(Code.HTTP_BAD_REQUEST, requestLine,
                         "Conflicting or malformed headers detected");
                 return;
@@ -554,7 +554,7 @@ class ServerImpl {
                     return;
                 }
             } else {
-                headerValue = headers.getFirst("Content-Length");
+                headerValue = headers.getFirst("Content-length");
                 if (headerValue != null) {
                     try {
                         clen = Long.parseLong(headerValue);
@@ -599,7 +599,7 @@ class ServerImpl {
                     rheaders.set("Connection", "keep-alive");
                     int idleSeconds = (int) (ServerConfig.getIdleIntervalMillis() / 1000);
                     String val = "timeout=" + idleSeconds;
-                    rheaders.set("Keep-Alive", val);
+                    rheaders.set("Keep-alive", val);
                 }
             }
 
