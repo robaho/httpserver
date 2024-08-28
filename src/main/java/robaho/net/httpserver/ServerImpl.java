@@ -131,7 +131,7 @@ class ServerImpl {
         this.wrapper = wrapper;
 
         this.logger = System.getLogger("robaho.net.httpserver."+System.identityHashCode(this));
-        LogManager.getLogManager().getLogger(this.logger.getName()).setFilter(new java.util.logging.Filter(){
+        java.util.logging.Logger.getLogger(this.logger.getName()).setFilter(new java.util.logging.Filter(){
             @Override
             public boolean isLoggable(LogRecord record) {
                 record.setMessage("["+protocol+":"+socket.getLocalPort()+"] "+record.getMessage());
@@ -182,7 +182,7 @@ class ServerImpl {
 
             var rc = requestCount.get();
 
-            var output = 
+            var output =
                 (
                 "Connections: "+connectionCount.get()+"\n" +
                 "Active Connections: "+allConnections.size()+"\n" +
