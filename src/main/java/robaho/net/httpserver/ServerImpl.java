@@ -26,8 +26,6 @@ package robaho.net.httpserver;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
-import static robaho.net.httpserver.Utils.isValidName;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -43,7 +41,6 @@ import java.net.URISyntaxException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -54,7 +51,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 
 import javax.net.ssl.SSLSocket;
@@ -131,7 +127,7 @@ class ServerImpl {
         this.wrapper = wrapper;
 
         this.logger = System.getLogger("robaho.net.httpserver."+System.identityHashCode(this));
-        LogManager.getLogManager().getLogger(this.logger.getName()).setFilter(new java.util.logging.Filter(){
+        java.util.logging.Logger.getLogger(this.logger.getName()).setFilter(new java.util.logging.Filter(){
             @Override
             public boolean isLoggable(LogRecord record) {
                 record.setMessage("["+protocol+":"+socket.getLocalPort()+"] "+record.getMessage());
