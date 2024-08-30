@@ -162,7 +162,7 @@ The counts can be reset using `/__stats?reset`. The `requests/sec` is calculated
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.6</version>
+  <version>1.0.7</version>
 </dependency>
 ```
 ## future work
