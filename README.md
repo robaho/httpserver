@@ -90,23 +90,23 @@ Transfer/sec:     22.24MB
 robertengels@macmini go-wrk % ./go-wrk -c=1024 -d=30 -T=100000 http://imac:8080/plaintext
 Running 30s test @ http://imac:8080/plaintext
   1024 goroutine(s) running concurrently
-2263637 requests in 29.998871972s, 269.85MB read
-Requests/sec:		75457.40
-Transfer/sec:		9.00MB
-Overall Requests/sec:	74447.26
-Overall Transfer/sec:	8.87MB
-Fastest Request:	527µs
-Avg Req Time:		13.57ms
-Slowest Request:	123.979ms
+3194361 requests in 30.105607793s, 380.80MB read
+Requests/sec:		106105.18
+Transfer/sec:		12.65MB
+Overall Requests/sec:	104132.86
+Overall Transfer/sec:	12.41MB
+Fastest Request:	104µs
+Avg Req Time:		9.65ms
+Slowest Request:	2.414591s
 Number of Errors:	0
-10%:			5.856ms
-50%:			6.873ms
-75%:			7.302ms
-99%:			7.699ms
-99.9%:			7.713ms
-99.9999%:		7.715ms
-99.99999%:		7.715ms
-stddev:			3.532ms
+10%:			2.554ms
+50%:			3.123ms
+75%:			3.29ms
+99%:			3.395ms
+99.9%:			3.399ms
+99.9999%:		3.399ms
+99.99999%:		3.399ms
+stddev:			36.233m
 ```
 
 **jdk 21 go-wrk**<sup>3</sup>
@@ -114,26 +114,26 @@ stddev:			3.532ms
 robertengels@macmini go-wrk % ./go-wrk -c=1024 -d=30 -T=100000 http://imac:8080/plaintext
 Running 30s test @ http://imac:8080/plaintext
   1024 goroutine(s) running concurrently
-1574549 requests in 13.563570087s, 177.19MB read
-Requests/sec:		116086.62
-Transfer/sec:		13.06MB
-Overall Requests/sec:	33459.36
-Overall Transfer/sec:	3.77MB
-Fastest Request:	842µs
-Avg Req Time:		8.82ms
-Slowest Request:	19.511295s
-Number of Errors:	739
-Error Counts:		operation timed out=739
-10%:			1.597ms
-50%:			2.254ms
-75%:			2.48ms
-99%:			2.626ms
-99.9%:			2.631ms
-99.9999%:		2.631ms
-99.99999%:		2.631ms
-stddev:			187.376ms
+2046367 requests in 15.233001979s, 230.28MB read
+Requests/sec:		134337.74
+Transfer/sec:		15.12MB
+Overall Requests/sec:	59207.56
+Overall Transfer/sec:	6.66MB
+Fastest Request:	317µs
+Avg Req Time:		7.622ms
+Slowest Request:	20.820991s
+Number of Errors:	651
+Error Counts:		operation timed out=651
+10%:			1.007ms
+50%:			1.321ms
+75%:			1.422ms
+99%:			1.498ms
+99.9%:			1.501ms
+99.9999%:		1.501ms
+99.99999%:		1.501ms
+stddev:			207.565ms
 ```
-<sup>3</sup>_Note the failures/timeouts when using the JDK version (which also skews the statistics a bit)._
+<sup>3</sup>_Note the failures/timeouts when using the JDK version which affects the overall statistics._
 
 ## server statistics
 
