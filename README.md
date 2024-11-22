@@ -110,7 +110,7 @@ Number of Errors:	0
 stddev:			35.998ms
 ```
 
-**jdk 23 go-wrk**<sup>3</sup>
+**jdk 23 go-wrk**
 ```
 robertengels@macmini go-wrk % ./go-wrk -c=1024 -d=30 -T=100000 http://imac:8080/plaintext
 Running 30s test @ http://imac:8080/plaintext
@@ -134,7 +134,6 @@ Number of Errors:	0
 stddev:			174.373ms
 
 ```
-<sup>3</sup>_Note the failures/timeouts when using the JDK version which affects the overall statistics._
 
 ## server statistics
 
