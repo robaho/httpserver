@@ -40,13 +40,14 @@ or the service loader will automatically find it when the jar is placed on the c
 
 ## performance
 
-This version performs more than **3x** better than the JDK version when tested using the [Tech Empower Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver) on an identical hardware/work setup with the same JDK 21 version.<sup>1</sup> Early results with JDK-24 and the improved virtual threads scheduling shows even greater performance improvement.
+** updated 11/22/2024: retested using JDK 23. The results for the JDK version dropped dramatically because I was able to resolve the source of the errors (incorrect network configuration) - and now the robaho version is more than 10x faster.
 
-The frameworks were also tested using [go-wrk](https://github.com/robaho/go-wrk)<sup>2</sup>
+This version performs more than **10x** better than the JDK version when tested using the [Tech Empower Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver) on an identical hardware/work setup with the same JDK 23 version.<sup>1</sup>
 
-<sup>1</sup>_Currently working on submitting the robaho version to the Tech Empower benchmarks project for 3-party confirmation._<br>
+The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-wrk)<sup>2</sup>
+
+<sup>1</sup>_The robaho version has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
 <sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor. `go-wrk` was tested using the Tech Empower server process._
-
 
 **robaho tech empower**
 ```
@@ -54,34 +55,34 @@ robertengels@macmini go-wrk % wrk -H 'Host: imac' -H 'Accept: text/plain,text/ht
 Running 1m test @ http://imac:8080/plaintext
   2 threads and 64 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   658.83us  665.90us  19.01ms   16.14%
-    Req/Sec   294.57k    28.40k  329.21k    85.67%
+    Latency     1.20ms    9.22ms 404.09ms   85.37%
+    Req/Sec   348.78k    33.28k  415.03k    71.46%
   Latency Distribution
-     50%    0.00us
-     75%    0.00us
+     50%    0.98ms
+     75%    1.43ms
      90%    0.00us
      99%    0.00us
-  35179762 requests in 1.00m, 4.65GB read
-Requests/sec: 586136.93
-Transfer/sec:     79.38MB
+  41709198 requests in 1.00m, 5.52GB read
+Requests/sec: 693983.49
+Transfer/sec:     93.98MB
 ```
 
-**jdk 21 tech empower**
+**jdk 23 tech empower**
 ```
 robertengels@macmini go-wrk % wrk -H 'Host: imac' -H 'Accept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7' -H 'Connection: keep-alive' --latency -d 60 -c 64 --timeout 8 -t 2 http://imac:8080/plaintext -s ~/pipeline.lua -- 16
 Running 1m test @ http://imac:8080/plaintext
   2 threads and 64 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     3.10ms    6.16ms 407.66ms   65.94%
-    Req/Sec    86.84k    10.05k  119.40k    71.00%
+    Latency     2.91ms   12.01ms 405.70ms   63.71%
+    Req/Sec   114.30k    18.07k  146.91k    87.10%
   Latency Distribution
-     50%    5.17ms
+     50%    4.06ms
      75%    0.00us
      90%    0.00us
      99%    0.00us
-  10371476 requests in 1.00m, 1.30GB read
-Requests/sec: 172781.10
-Transfer/sec:     22.24MB
+  13669748 requests in 1.00m, 1.72GB read
+Requests/sec: 227446.87
+Transfer/sec:     29.28MB
 
 ```
 
@@ -90,48 +91,48 @@ Transfer/sec:     22.24MB
 robertengels@macmini go-wrk % ./go-wrk -c=1024 -d=30 -T=100000 http://imac:8080/plaintext
 Running 30s test @ http://imac:8080/plaintext
   1024 goroutine(s) running concurrently
-3194361 requests in 30.105607793s, 380.80MB read
-Requests/sec:		106105.18
-Transfer/sec:		12.65MB
-Overall Requests/sec:	104132.86
-Overall Transfer/sec:	12.41MB
-Fastest Request:	104µs
-Avg Req Time:		9.65ms
-Slowest Request:	2.414591s
+3252278 requests in 30.118280233s, 387.70MB read
+Requests/sec:		107983.52
+Transfer/sec:		12.87MB
+Overall Requests/sec:	105891.53
+Overall Transfer/sec:	12.62MB
+Fastest Request:	83µs
+Avg Req Time:		9.482ms
+Slowest Request:	1.415359s
 Number of Errors:	0
-10%:			2.554ms
-50%:			3.123ms
-75%:			3.29ms
-99%:			3.395ms
-99.9%:			3.399ms
-99.9999%:		3.399ms
-99.99999%:		3.399ms
-stddev:			36.233m
+10%:			286µs
+50%:			1.018ms
+75%:			1.272ms
+99%:			1.436ms
+99.9%:			1.441ms
+99.9999%:		1.442ms
+99.99999%:		1.442ms
+stddev:			35.998ms
 ```
 
-**jdk 21 go-wrk**<sup>3</sup>
+**jdk 23 go-wrk**<sup>3</sup>
 ```
 robertengels@macmini go-wrk % ./go-wrk -c=1024 -d=30 -T=100000 http://imac:8080/plaintext
 Running 30s test @ http://imac:8080/plaintext
   1024 goroutine(s) running concurrently
-2046367 requests in 15.233001979s, 230.28MB read
-Requests/sec:		134337.74
-Transfer/sec:		15.12MB
-Overall Requests/sec:	59207.56
-Overall Transfer/sec:	6.66MB
-Fastest Request:	317µs
-Avg Req Time:		7.622ms
-Slowest Request:	20.820991s
-Number of Errors:	651
-Error Counts:		operation timed out=651
-10%:			1.007ms
-50%:			1.321ms
-75%:			1.422ms
-99%:			1.498ms
-99.9%:			1.501ms
-99.9999%:		1.501ms
-99.99999%:		1.501ms
-stddev:			207.565ms
+264198 requests in 30.047154195s, 29.73MB read
+Requests/sec:		8792.78
+Transfer/sec:		1013.23KB
+Overall Requests/sec:	8595.99
+Overall Transfer/sec:	990.55KB
+Fastest Request:	408µs
+Avg Req Time:		116.459ms
+Slowest Request:	1.930495s
+Number of Errors:	0
+10%:			1.166ms
+50%:			1.595ms
+75%:			1.725ms
+99%:			1.827ms
+99.9%:			1.83ms
+99.9999%:		1.83ms
+99.99999%:		1.83ms
+stddev:			174.373ms
+
 ```
 <sup>3</sup>_Note the failures/timeouts when using the JDK version which affects the overall statistics._
 

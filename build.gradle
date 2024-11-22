@@ -10,7 +10,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(23)
     }
     withSourcesJar()
     withJavadocJar()
@@ -149,7 +149,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'io.github.robaho'
             artifactId = 'httpserver'
-            version = "1.0.8"
+            version = "1.0.9"
 
             from components.java
 
