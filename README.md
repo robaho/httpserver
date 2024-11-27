@@ -12,7 +12,7 @@ All async functionality has been removed. All synchronized blocks were removed i
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
 
-Improved performance by more than **3x** over the JDK implementation, using http pipelining, optimized String parsing, etc.
+Improved performance by more than **10x** over the JDK implementation, using http pipelining, optimized String parsing, etc.
 
 Designed for embedding with only a 90kb jar and zero dependencies.
 
