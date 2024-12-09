@@ -45,7 +45,7 @@ import java.util.Objects;
  * 0\r\n\r\n
  */
 
-final class ChunkedOutputStream extends FilterOutputStream {
+class ChunkedOutputStream extends FilterOutputStream {
     private boolean closed = false;
     /* max. amount of user data per chunk */
     static final int CHUNK_SIZE = 4096;
@@ -61,7 +61,6 @@ final class ChunkedOutputStream extends FilterOutputStream {
         this.t = t;
     }
 
-    @Override
     public void write(int b) throws IOException {
         if (closed) {
             throw new StreamClosedException();
@@ -74,7 +73,6 @@ final class ChunkedOutputStream extends FilterOutputStream {
         assert count < CHUNK_SIZE;
     }
 
-    @Override
     public void write(byte[] b, int off, int len) throws IOException {
         Objects.checkFromIndexSize(off, len, b.length);
         if (len == 0) {
@@ -130,7 +128,6 @@ final class ChunkedOutputStream extends FilterOutputStream {
         pos = OFFSET;
     }
 
-    @Override
     public void close() throws IOException {
         if (closed) {
             return;
@@ -152,7 +149,6 @@ final class ChunkedOutputStream extends FilterOutputStream {
         }
     }
 
-    @Override
     public void flush() throws IOException {
         if (closed) {
             throw new StreamClosedException();

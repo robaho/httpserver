@@ -27,7 +27,7 @@ package robaho.net.httpserver;
 
 import java.io.*;
 
-final class ChunkedInputStream extends LeftOverInputStream {
+class ChunkedInputStream extends LeftOverInputStream {
     ChunkedInputStream(ExchangeImpl t, InputStream src) {
         super(t, src);
     }
@@ -107,7 +107,6 @@ final class ChunkedInputStream extends LeftOverInputStream {
         throw new IOException("end of stream reading chunk header");
     }
 
-    @Override
     protected int readImpl(byte[] b, int off, int len) throws IOException {
         if (eof) {
             return -1;
@@ -155,7 +154,6 @@ final class ChunkedInputStream extends LeftOverInputStream {
      * limitation for the moment. It only affects potential efficiency
      * rather than correctness.
      */
-    @Override
     public int available() throws IOException {
         if (eof || closed) {
             return 0;
@@ -164,16 +162,13 @@ final class ChunkedInputStream extends LeftOverInputStream {
         return n > remaining ? remaining : n;
     }
 
-    @Override
     public boolean markSupported() {
         return false;
     }
 
-    @Override
     public void mark(int l) {
     }
 
-    @Override
     public void reset() throws IOException {
         throw new IOException("mark/reset not supported");
     }
