@@ -43,14 +43,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.sun.net.httpserver.HttpExchange;
 
+import static java.lang.System.Logger.Level.*;
+
 public abstract class WebSocket {
 
-    Logger logger = Logger.getLogger(WebSocket.class.getName());
+    protected final System.Logger logger = System.getLogger("robaho.net.httpserver.websockets");
 
     private final InputStream in;
     private final OutputStream out;
@@ -68,7 +68,7 @@ public abstract class WebSocket {
     protected WebSocket(HttpExchange exchange) {
         this.uri = exchange.getRequestURI();
 
-        logger.info("connecting websocket "+uri);
+        logger.log(INFO, "connecting websocket {0}", uri);
 
         this.state = State.CONNECTING;
         this.in = exchange.getRequestBody();
@@ -90,12 +90,12 @@ public abstract class WebSocket {
 
     protected void onException(IOException exception) {
         if(state!=State.CLOSING && state!=State.CLOSED) {
-            logger.log(Level.FINER, "exception on websocket", exception);
+            logger.log(TRACE, "exception on websocket", exception);
         }
     }
 
     protected void onFrameReceived(WebSocketFrame frame) {
-        logger.log(Level.FINER, () -> "frame received: " + frame);
+        logger.log(TRACE, "frame received: {0}", frame);
     }
 
     /**
@@ -106,11 +106,11 @@ public abstract class WebSocket {
      *              The sent WebSocket Frame.
      */
     protected void onFrameSent(WebSocketFrame frame) {
-        logger.log(Level.FINER, () -> "frame sent: " + frame);
+        logger.log(TRACE, "frame sent: {0}", frame);
     }
 
     public void close(CloseCode code, String reason, boolean initiatedByRemote) throws IOException {
-        logger.info("closing websocket "+uri);
+        logger.log(INFO, "closing websocket {0}", uri);
 
         State oldState = this.state;
         this.state = State.CLOSING;
@@ -150,7 +150,7 @@ public abstract class WebSocket {
             code = ((CloseFrame) frame).getCloseCode();
             reason = ((CloseFrame) frame).getCloseReason();
         }
-        logger.finest("handleCloseFrame: "+uri+", code="+code+", reason="+reason+", state "+this.state);
+        logger.log(TRACE, "handleCloseFrame: {0}, code={1}, reason={2}, state {3}", uri, code, reason, this.state);
         if (this.state == State.CLOSING) {
             // Answer for my requested close
             doClose(code, reason, false);
@@ -215,7 +215,7 @@ public abstract class WebSocket {
     void readWebsocket() {
         try {
             state = State.OPEN;
-            logger.fine("websocket open "+uri);
+            logger.log(DEBUG, "websocket open {0}", uri);
             onOpen();
             while (this.state == State.OPEN) {
                 handleWebsocketFrame(WebSocketFrame.read(in));
@@ -235,7 +235,7 @@ public abstract class WebSocket {
             }
         } finally {
             doClose(CloseCode.InternalServerError, "Handler terminated without closing the connection.", false);
-            logger.finest("readWebsocket() exiting "+uri);
+            logger.log(TRACE, "readWebsocket() exiting {0}", uri);
         }
     }
 
