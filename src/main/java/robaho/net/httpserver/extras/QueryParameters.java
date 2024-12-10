@@ -6,7 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 
-public class QueryParameters extends LinkedHashMap<String, List<String>> {
+public final class QueryParameters extends LinkedHashMap<String, List<String>> {
 
     /**
      * @param encoding a valid java character set name

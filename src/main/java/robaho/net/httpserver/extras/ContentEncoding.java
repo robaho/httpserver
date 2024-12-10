@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.sun.net.httpserver.Headers;
 
-public class ContentEncoding {
+public final class ContentEncoding {
 
     private static final String defaultCharset = StandardCharsets.ISO_8859_1.name();
 

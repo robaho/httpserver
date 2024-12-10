@@ -22,7 +22,7 @@ import robaho.net.httpserver.NoSyncBufferedOutputStream;
 /**
  * parse multipart form data
  */
-public class MultipartFormParser {
+public final class MultipartFormParser {
     /**
      * a multipart part.
      *
