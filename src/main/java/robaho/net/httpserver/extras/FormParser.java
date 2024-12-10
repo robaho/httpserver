@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Parse url-encoded requests.
  */
-public class FormParser {
+public final class FormParser {
 
     // Sets the maximum count of accepted POST params - protection against Hash collision DOS attacks
     private static final int MAX_PARAMS = Integer.getInteger("robaho.net.httpserver.max_form_params", 1000); // 0 == no limit
