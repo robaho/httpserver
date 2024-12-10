@@ -42,14 +42,14 @@ import javax.net.ssl.SSLSocket;
  * one of these is hung from the selector attachment and is used to locate
  * everything from that.
  */
-class HttpConnection {
+final class HttpConnection {
     private static final Logger logger = System.getLogger("robaho.net.httpserver");
 
     HttpContextImpl context;
 
     /* low level stream that sits directly over channel */
-    InputStream is;
-    OutputStream os;
+    final InputStream is;
+    final OutputStream os;
 
     final Socket socket;
     volatile boolean closed = false;
@@ -139,7 +139,7 @@ class HttpConnection {
         return context;
     }
 
-    private class ActivityTimerInputStream extends FilterInputStream {
+    private final class ActivityTimerInputStream extends FilterInputStream {
 
         private ActivityTimerInputStream(InputStream inputStream) {
             super(inputStream);
@@ -175,7 +175,7 @@ class HttpConnection {
 
     }
 
-    private class ActivityTimerOutputStream extends FilterOutputStream {
+    private final class ActivityTimerOutputStream extends FilterOutputStream {
 
         private ActivityTimerOutputStream(OutputStream outputStream) {
             super(outputStream);

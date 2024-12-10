@@ -25,7 +25,7 @@
 
 package robaho.net.httpserver;
 
-public class Code {
+public final class Code {
 
   public static final int HTTP_CONTINUE = 100;
   public static final int HTTP_OK = 200;

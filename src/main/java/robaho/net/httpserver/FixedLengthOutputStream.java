@@ -36,10 +36,10 @@ import java.util.Objects;
  * normal close() does not close the underlying stream
  */
 
-class FixedLengthOutputStream extends FilterOutputStream {
+final class FixedLengthOutputStream extends FilterOutputStream {
     private long remaining;
     private boolean closed = false;
-    ExchangeImpl t;
+    private final ExchangeImpl t;
 
     FixedLengthOutputStream(ExchangeImpl t, OutputStream src, long len) {
         super(src);
@@ -50,6 +50,7 @@ class FixedLengthOutputStream extends FilterOutputStream {
         this.remaining = len;
     }
 
+    @Override
     public void write(int b) throws IOException {
         if (closed) {
             throw new IOException("stream closed");
@@ -61,6 +62,7 @@ class FixedLengthOutputStream extends FilterOutputStream {
         remaining--;
     }
 
+    @Override
     public void write(byte[] b, int off, int len) throws IOException {
         Objects.checkFromIndexSize(off, len, b.length);
         if (len == 0) {
@@ -77,6 +79,7 @@ class FixedLengthOutputStream extends FilterOutputStream {
         remaining -= len;
     }
 
+    @Override
     public void close() throws IOException {
         if (closed) {
             return;

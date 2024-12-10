@@ -27,6 +27,7 @@ package robaho.net.httpserver;
 
 import java.io.*;
 
-class StreamClosedException extends IOException {
+final class StreamClosedException extends IOException {
+    @Serial
     private static final long serialVersionUID = -4485921499356327937L;
 }

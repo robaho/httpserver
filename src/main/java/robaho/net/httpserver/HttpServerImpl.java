@@ -30,9 +30,9 @@ import java.io.*;
 import java.util.concurrent.*;
 import com.sun.net.httpserver.*;
 
-public class HttpServerImpl extends HttpServer {
+public final class HttpServerImpl extends HttpServer {
 
-    ServerImpl server;
+    private final ServerImpl server;
 
     HttpServerImpl() throws IOException {
         this(new InetSocketAddress(80), 0);
@@ -43,42 +43,52 @@ public class HttpServerImpl extends HttpServer {
         server = new ServerImpl(this, "http", addr, backlog);
     }
 
+    @Override
     public void bind(InetSocketAddress addr, int backlog) throws IOException {
         server.bind(addr, backlog);
     }
 
+    @Override
     public void start() {
         server.start();
     }
 
+    @Override
     public void setExecutor(Executor executor) {
         server.setExecutor(executor);
     }
 
+    @Override
     public Executor getExecutor() {
         return server.getExecutor();
     }
 
+    @Override
     public void stop(int delay) {
         server.stop(delay);
     }
 
-    public HttpContextImpl createContext(String path, HttpHandler handler) {
+    @Override
+    public HttpContext createContext(String path, HttpHandler handler) {
         return server.createContext(path, handler);
     }
 
-    public HttpContextImpl createContext(String path) {
+    @Override
+    public HttpContext createContext(String path) {
         return server.createContext(path);
     }
 
+    @Override
     public void removeContext(String path) throws IllegalArgumentException {
         server.removeContext(path);
     }
 
+    @Override
     public void removeContext(HttpContext context) throws IllegalArgumentException {
         server.removeContext(context);
     }
 
+    @Override
     public InetSocketAddress getAddress() {
         return server.getAddress();
     }

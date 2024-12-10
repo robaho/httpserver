@@ -42,7 +42,7 @@ import com.sun.net.httpserver.*;
 
 import robaho.net.httpserver.websockets.WebSocketHandler;
 
-class ExchangeImpl {
+final class ExchangeImpl {
 
     Headers reqHdrs, rspHdrs;
     Request req;
@@ -108,23 +108,23 @@ class ExchangeImpl {
         this.ris = req.inputStream();
     }
 
-    public Headers getRequestHeaders() {
+    Headers getRequestHeaders() {
         return reqHdrs;
     }
 
-    public Headers getResponseHeaders() {
+    Headers getResponseHeaders() {
         return rspHdrs;
     }
 
-    public URI getRequestURI() {
+    URI getRequestURI() {
         return uri;
     }
 
-    public String getRequestMethod() {
+    String getRequestMethod() {
         return method;
     }
 
-    public HttpContextImpl getHttpContext() {
+    HttpContextImpl getHttpContext() {
         return connection.getHttpContext();
     }
 
@@ -136,7 +136,7 @@ class ExchangeImpl {
         return CONNECT.equals(getRequestMethod());
     }
 
-    public void close() {
+    void close() {
         if (closed) {
             return;
         }
@@ -166,7 +166,7 @@ class ExchangeImpl {
         }
     }
 
-    public InputStream getRequestBody() {
+    InputStream getRequestBody() {
         if (uis != null) {
             return uis;
         }
@@ -187,11 +187,11 @@ class ExchangeImpl {
         return uis_orig;
     }
 
-    public int getResponseCode() {
+    int getResponseCode() {
         return rcode;
     }
 
-    public OutputStream getResponseBody() {
+    OutputStream getResponseBody() {
         /*
          * TODO. Change spec to remove restriction below. Filters
          * cannot work with this restriction
@@ -219,7 +219,7 @@ class ExchangeImpl {
 
     // hard-coded formatting for Date header, rather than using slower DateFormatter
     
-    public void sendResponseHeaders(int rCode, long contentLen)
+    void sendResponseHeaders(int rCode, long contentLen)
             throws IOException {
         final Logger logger = getServerImpl().getLogger();
         if (sentHeaders) {
@@ -353,31 +353,31 @@ class ExchangeImpl {
         outputAscii(CRNL,os);
     }
 
-    public InetSocketAddress getRemoteAddress() {
+    InetSocketAddress getRemoteAddress() {
         Socket s = connection.getSocket();
         InetAddress ia = s.getInetAddress();
         int port = s.getPort();
         return new InetSocketAddress(ia, port);
     }
 
-    public InetSocketAddress getLocalAddress() {
+    InetSocketAddress getLocalAddress() {
         Socket s = connection.getSocket();
         InetAddress ia = s.getLocalAddress();
         int port = s.getLocalPort();
         return new InetSocketAddress(ia, port);
     }
 
-    public String getProtocol() {
+    String getProtocol() {
         String reqline = req.requestLine();
         int index = reqline.lastIndexOf(" ");
         return reqline.substring(index + 1);
     }
 
-    public SSLSession getSSLSession() {
+    SSLSession getSSLSession() {
         return connection.getSSLSession();
     }
 
-    public Object getAttribute(String name) {
+    Object getAttribute(String name) {
         if (name == null) {
             throw new NullPointerException("null name parameter");
         }
@@ -387,7 +387,7 @@ class ExchangeImpl {
         return attributes.get(name);
     }
 
-    public void setAttribute(String name, Object value) {
+    void setAttribute(String name, Object value) {
         if (name == null) {
             throw new NullPointerException("null name parameter");
         }
@@ -401,7 +401,7 @@ class ExchangeImpl {
         }
     }
 
-    public void setStreams(InputStream i, OutputStream o) {
+    void setStreams(InputStream i, OutputStream o) {
         assert uis != null;
         if (i != null) {
             uis = i;
@@ -422,7 +422,7 @@ class ExchangeImpl {
         return getHttpContext().getServerImpl();
     }
 
-    public HttpPrincipal getPrincipal() {
+    HttpPrincipal getPrincipal() {
         return principal;
     }
 
@@ -447,7 +447,7 @@ class ExchangeImpl {
  * the wrapped stream has been provided, then an IOException will
  * be thrown.
  */
-class PlaceholderOutputStream extends java.io.OutputStream {
+final class PlaceholderOutputStream extends java.io.OutputStream {
 
     OutputStream wrapped;
 
@@ -469,26 +469,31 @@ class PlaceholderOutputStream extends java.io.OutputStream {
         }
     }
 
+    @Override
     public void write(int b) throws IOException {
         checkWrap();
         wrapped.write(b);
     }
 
+    @Override
     public void write(byte b[]) throws IOException {
         checkWrap();
         wrapped.write(b);
     }
 
+    @Override
     public void write(byte b[], int off, int len) throws IOException {
         checkWrap();
         wrapped.write(b, off, len);
     }
 
+    @Override
     public void flush() throws IOException {
         checkWrap();
         wrapped.flush();
     }
 
+    @Override
     public void close() throws IOException {
         checkWrap();
         wrapped.close();

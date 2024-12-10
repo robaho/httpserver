@@ -28,7 +28,7 @@ package robaho.net.httpserver;
 /**
  * Provides utility methods for checking header field names and quoted strings.
  */
-public class Utils {
+public final class Utils {
 
     // ABNF primitives defined in RFC 7230
     private static final boolean[] TCHAR = new boolean[256];

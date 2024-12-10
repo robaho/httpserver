@@ -29,13 +29,13 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-class ContextList {
+final class ContextList {
 
     private final List<HttpContextImpl> list = new CopyOnWriteArrayList<>();
     private final Map<CacheKey,HttpContextImpl> cache = new ConcurrentHashMap<>();
     private record CacheKey(String protocol,String path){}
 
-    public synchronized void add(HttpContextImpl ctx) {
+    synchronized void add(HttpContextImpl ctx) {
         assert ctx.getPath() != null;
         if (contains(ctx)) {
             throw new IllegalArgumentException("cannot add context to list");
@@ -47,7 +47,7 @@ class ContextList {
         return findContext(ctx.getProtocol(), ctx.getPath(), true) != null;
     }
 
-    public int size() {
+    int size() {
         return list.size();
     }
 
@@ -90,7 +90,7 @@ class ContextList {
         return lc;
     }
 
-    public synchronized void remove(String protocol, String path)
+    synchronized void remove(String protocol, String path)
             throws IllegalArgumentException {
         HttpContextImpl ctx = findContext(protocol, path, true);
         if (ctx == null) {
@@ -99,7 +99,7 @@ class ContextList {
         list.remove(ctx);
     }
 
-    public synchronized void remove(HttpContextImpl context)
+    synchronized void remove(HttpContextImpl context)
             throws IllegalArgumentException {
         for (HttpContextImpl ctx : list) {
             if (ctx.equals(context)) {
