@@ -29,79 +29,96 @@ import java.io.*;
 import java.net.*;
 import com.sun.net.httpserver.*;
 
-class HttpExchangeImpl extends HttpExchange {
+final class HttpExchangeImpl extends HttpExchange {
 
-    ExchangeImpl impl;
+    private final ExchangeImpl impl;
 
     HttpExchangeImpl(ExchangeImpl impl) {
         this.impl = impl;
     }
 
+    @Override
     public Headers getRequestHeaders() {
         return impl.getRequestHeaders();
     }
 
+    @Override
     public Headers getResponseHeaders() {
         return impl.getResponseHeaders();
     }
 
+    @Override
     public URI getRequestURI() {
         return impl.getRequestURI();
     }
 
+    @Override
     public String getRequestMethod() {
         return impl.getRequestMethod();
     }
 
+    @Override
     public HttpContextImpl getHttpContext() {
         return impl.getHttpContext();
     }
 
+    @Override
     public void close() {
         impl.close();
     }
 
+    @Override
     public InputStream getRequestBody() {
         return impl.getRequestBody();
     }
 
+    @Override
     public int getResponseCode() {
         return impl.getResponseCode();
     }
 
+    @Override
     public OutputStream getResponseBody() {
         return impl.getResponseBody();
     }
 
+    @Override
     public void sendResponseHeaders(int rCode, long contentLen)
             throws IOException {
         impl.sendResponseHeaders(rCode, contentLen);
     }
 
+    @Override
     public InetSocketAddress getRemoteAddress() {
         return impl.getRemoteAddress();
     }
 
+    @Override
     public InetSocketAddress getLocalAddress() {
         return impl.getLocalAddress();
     }
 
+    @Override
     public String getProtocol() {
         return impl.getProtocol();
     }
 
+    @Override
     public Object getAttribute(String name) {
         return impl.getAttribute(name);
     }
 
+    @Override
     public void setAttribute(String name, Object value) {
         impl.setAttribute(name, value);
     }
 
+    @Override
     public void setStreams(InputStream i, OutputStream o) {
         impl.setStreams(i, o);
     }
 
+    @Override
     public HttpPrincipal getPrincipal() {
         return impl.getPrincipal();
     }

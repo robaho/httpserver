@@ -35,7 +35,7 @@ import com.sun.net.httpserver.Headers;
 
 /**
  */
-class Request {
+final class Request {
 
     static final char CR = 13;
     static final char LF = 10;
@@ -52,23 +52,23 @@ class Request {
         requestLine = readRequestLine();
     }
 
-    public InputStream inputStream() {
+    InputStream inputStream() {
         return is;
     }
 
-    public OutputStream outputStream() {
+    OutputStream outputStream() {
         return os;
     }
 
-    static class PushbackStream {
+    static final class PushbackStream {
         private final InputStream is;
         private int pushback = -1;
         private boolean eof=false;
 
-        public PushbackStream(InputStream is) {
+        PushbackStream(InputStream is) {
             this.is = is;
         }
-        public int read() throws IOException {
+        int read() throws IOException {
             if(pushback!=-1) {
                 try {
                     return pushback;
@@ -79,7 +79,7 @@ class Request {
             if(eof) return -1;
             return is.read();
         }
-        public void skipWhitespace() throws IOException {
+        void skipWhitespace() throws IOException {
             int c;
             for(c=read();c==' ' || c=='\t';c=read()){}
             if(c==-1) eof=true; else pushback=c;
@@ -143,7 +143,7 @@ class Request {
     /**
      * @returns the request line or the empty string if not found
      */
-    public String requestLine() {
+    String requestLine() {
         return requestLine;
     }
 
@@ -167,7 +167,7 @@ class Request {
             }
             buffer[count++]=(byte)c;
         }
-        public String trimmed() {
+        String trimmed() {
             int start=0;
             while(start<count && buffer[start]==' ') start++;
             int end=count;

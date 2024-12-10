@@ -67,7 +67,7 @@ import com.sun.net.httpserver.HttpsConfigurator;
 /**
  * Provides implementation for both HTTP and HTTPS
  */
-class ServerImpl {
+final class ServerImpl {
 
     private final String protocol;
     private final boolean https;
@@ -108,8 +108,8 @@ class ServerImpl {
                 : IDLE_INTERVAL;
     }
 
-    private Timer timer;
-    private Logger logger;
+    private final Timer timer;
+    private final Logger logger;
     private Thread dispatcherThread;
 
     // statistics
@@ -153,7 +153,7 @@ class ServerImpl {
         }
     }
 
-    private class StatsHandler implements HttpHandler {
+    private final class StatsHandler implements HttpHandler {
         volatile long lastStatsTime = System.currentTimeMillis();
         volatile long lastRequestCount = 0;
         @Override
@@ -200,7 +200,7 @@ class ServerImpl {
         }
     }
 
-    public void bind(InetSocketAddress addr, int backlog) throws IOException {
+    void bind(InetSocketAddress addr, int backlog) throws IOException {
         if (bound) {
             throw new BindException("HttpServer already bound");
         }
@@ -212,7 +212,7 @@ class ServerImpl {
         bound = true;
     }
 
-    public void start() {
+    void start() {
         if (!bound || started || finished) {
             throw new IllegalStateException("server in wrong state");
         }
@@ -225,14 +225,14 @@ class ServerImpl {
         dispatcherThread.start();
     }
 
-    public void setExecutor(Executor executor) {
+    void setExecutor(Executor executor) {
         if (started) {
             throw new IllegalStateException("server already started");
         }
         this.executor = executor;
     }
 
-    private static class DefaultExecutor implements Executor {
+    private static final class DefaultExecutor implements Executor {
         private final ExecutorService executor = Executors.newCachedThreadPool();
 
         @Override
@@ -244,11 +244,11 @@ class ServerImpl {
         }
     }
 
-    public Executor getExecutor() {
+    Executor getExecutor() {
         return executor;
     }
 
-    public void setHttpsConfigurator(HttpsConfigurator config) {
+    void setHttpsConfigurator(HttpsConfigurator config) {
         if (config == null) {
             throw new NullPointerException("null HttpsConfigurator");
         }
@@ -258,15 +258,15 @@ class ServerImpl {
         this.httpsConfig = config;
     }
 
-    public HttpsConfigurator getHttpsConfigurator() {
+    HttpsConfigurator getHttpsConfigurator() {
         return httpsConfig;
     }
 
-    public final boolean isFinishing() {
+    boolean isFinishing() {
         return finished;
     }
 
-    public void stop(int delay) {
+    void stop(int delay) {
         if (delay < 0) {
             throw new IllegalArgumentException("negative delay parameter");
         }
@@ -302,7 +302,7 @@ class ServerImpl {
 
     Dispatcher dispatcher;
 
-    public HttpContextImpl createContext(String path, HttpHandler handler) {
+    HttpContextImpl createContext(String path, HttpHandler handler) {
         if (handler == null || path == null) {
             throw new NullPointerException("null handler, or path parameter");
         }
@@ -312,7 +312,7 @@ class ServerImpl {
         return context;
     }
 
-    public HttpContextImpl createContext(String path) {
+    HttpContextImpl createContext(String path) {
         if (path == null) {
             throw new NullPointerException("null path parameter");
         }
@@ -322,7 +322,7 @@ class ServerImpl {
         return context;
     }
 
-    public void removeContext(String path) throws IllegalArgumentException {
+    void removeContext(String path) throws IllegalArgumentException {
         if (path == null) {
             throw new NullPointerException("null path parameter");
         }
@@ -330,7 +330,7 @@ class ServerImpl {
         logger.log(Level.DEBUG, "context removed: " + path);
     }
 
-    public void removeContext(HttpContext context) throws IllegalArgumentException {
+    void removeContext(HttpContext context) throws IllegalArgumentException {
         if (!(context instanceof HttpContextImpl)) {
             throw new IllegalArgumentException("wrong HttpContext type");
         }
@@ -339,7 +339,7 @@ class ServerImpl {
     }
 
     @SuppressWarnings("removal")
-    public InetSocketAddress getAddress() {
+    InetSocketAddress getAddress() {
         return AccessController.doPrivileged(
                 new PrivilegedAction<InetSocketAddress>() {
                     public InetSocketAddress run() {
@@ -352,7 +352,7 @@ class ServerImpl {
      * The Dispatcher is responsible for accepting any connections and then
      * using those connections to process incoming requests.
      */
-    class Dispatcher implements Runnable {
+    final class Dispatcher implements Runnable {
         public void run() {
             while (true) {
                 try {
@@ -419,7 +419,7 @@ class ServerImpl {
     }
 
     /* per exchange task */
-    class Exchange implements Runnable {
+    final class Exchange implements Runnable {
         final HttpConnection connection;
         InputStream rawin;
         OutputStream rawout;
@@ -647,7 +647,7 @@ class ServerImpl {
         }
 
         /* used to link to 2 or more Filter.Chains together */
-        class LinkHandler implements HttpHandler {
+        static final class LinkHandler implements HttpHandler {
 
             Filter.Chain nextChain;
 
@@ -729,7 +729,7 @@ class ServerImpl {
      * Responsible for closing connections that have been idle or exceed other
      * limits
      */
-    class ConnectionCleanerTask extends TimerTask {
+    final class ConnectionCleanerTask extends TimerTask {
 
         @Override
         public void run() {

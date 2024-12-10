@@ -33,7 +33,7 @@ import java.io.*;
  * close() does not close the underlying stream
  */
 
-class FixedLengthInputStream extends LeftOverInputStream {
+final class FixedLengthInputStream extends LeftOverInputStream {
     private long remaining;
 
     FixedLengthInputStream(ExchangeImpl t, InputStream src, long len) {
@@ -44,6 +44,7 @@ class FixedLengthInputStream extends LeftOverInputStream {
         this.remaining = len;
     }
 
+    @Override
     protected int readImpl(byte[] b, int off, int len) throws IOException {
 
         eof = (remaining == 0L);
@@ -62,6 +63,7 @@ class FixedLengthInputStream extends LeftOverInputStream {
         return n;
     }
 
+    @Override
     public int available() throws IOException {
         if (eof) {
             return 0;
@@ -70,13 +72,16 @@ class FixedLengthInputStream extends LeftOverInputStream {
         return n < remaining ? n : (int) remaining;
     }
 
+    @Override
     public boolean markSupported() {
         return false;
     }
 
+    @Override
     public void mark(int l) {
     }
 
+    @Override
     public void reset() throws IOException {
         throw new IOException("mark/reset not supported");
     }
