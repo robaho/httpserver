@@ -41,25 +41,25 @@ import java.util.Base64;
 
 import com.sun.net.httpserver.HttpExchange;
 
-public class Util {
+final class Util {
 
-    public static final String HEADER_UPGRADE = "Upgrade";
+    static final String HEADER_UPGRADE = "Upgrade";
 
-    public static final String HEADER_UPGRADE_VALUE = "websocket";
+    static final String HEADER_UPGRADE_VALUE = "websocket";
 
-    public static final String HEADER_CONNECTION = "Connection";
+    static final String HEADER_CONNECTION = "Connection";
 
-    public static final String HEADER_CONNECTION_VALUE = "Upgrade";
+    static final String HEADER_CONNECTION_VALUE = "Upgrade";
 
-    public static final String HEADER_WEBSOCKET_VERSION = "sec-websocket-version";
+    static final String HEADER_WEBSOCKET_VERSION = "sec-websocket-version";
 
-    public static final String HEADER_WEBSOCKET_VERSION_VALUE = "13";
+    static final String HEADER_WEBSOCKET_VERSION_VALUE = "13";
 
-    public static final String HEADER_WEBSOCKET_KEY = "sec-websocket-key";
+    static final String HEADER_WEBSOCKET_KEY = "sec-websocket-key";
 
-    public static final String HEADER_WEBSOCKET_ACCEPT = "sec-websocket-accept";
+    static final String HEADER_WEBSOCKET_ACCEPT = "sec-websocket-accept";
 
-    public static final String HEADER_WEBSOCKET_PROTOCOL = "sec-websocket-protocol";
+    static final String HEADER_WEBSOCKET_PROTOCOL = "sec-websocket-protocol";
 
     private final static String WEBSOCKET_KEY_MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
@@ -67,7 +67,7 @@ public class Util {
         return Base64.getEncoder().encodeToString(buf);
     }
 
-    public static String makeAcceptKey(String key) throws NoSuchAlgorithmException {
+    static String makeAcceptKey(String key) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("SHA-1");
         String text = key + Util.WEBSOCKET_KEY_MAGIC;
         md.update(text.getBytes(), 0, text.length());
@@ -77,7 +77,7 @@ public class Util {
 
     private static final String CONTENT_TYPE = "Content-type";
 
-    public static void sendResponseHeaders(HttpExchange exchange, int code, String reason) throws IOException {
+    static void sendResponseHeaders(HttpExchange exchange, int code, String reason) throws IOException {
         var bytes = reason.getBytes();
         exchange.getRequestHeaders().set(CONTENT_TYPE, "text/plain");
         exchange.sendResponseHeaders(code, bytes.length);
