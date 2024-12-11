@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package robaho.net.httpserver;
 
 /**
@@ -36,9 +35,9 @@ public class Utils {
     private static final boolean[] QUOTED_PAIR = new boolean[256];
 
     static {
-        char[] allowedTokenChars = ("!#$%&'*+-.^_`|~0123456789" +
-                "abcdefghijklmnopqrstuvwxyz" +
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ").toCharArray();
+        char[] allowedTokenChars = ("!#$%&'*+-.^_`|~0123456789"
+                + "abcdefghijklmnopqrstuvwxyz"
+                + "ABCDEFGHIJKLMNOPQRSTUVWXYZ").toCharArray();
         for (char c : allowedTokenChars) {
             TCHAR[c] = true;
         }
@@ -86,5 +85,33 @@ public class Utils {
             }
         }
         return true;
+    }
+
+    /**
+     * efficient contains() ignoring case
+     */
+    public static boolean containsIgnoreCase(String src, String what) {
+        final int length = what.length();
+        if (length == 0) {
+            return true; // Empty string is contained
+        }
+        final char firstLo = Character.toLowerCase(what.charAt(0));
+        final char firstUp = Character.toUpperCase(what.charAt(0));
+
+        final int srcLength = src.length();
+
+        for (int i = srcLength - length; i >= 0; i--) {
+            // Quick check before calling the more expensive regionMatches() method:
+            final char ch = src.charAt(i);
+            if (ch != firstLo && ch != firstUp) {
+                continue;
+            }
+
+            if (src.regionMatches(true, i, what, 0, length)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

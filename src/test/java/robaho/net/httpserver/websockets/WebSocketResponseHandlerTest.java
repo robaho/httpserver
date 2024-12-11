@@ -155,6 +155,8 @@ public class WebSocketResponseHandlerTest {
     public void testConnectionHeaderHandlesKeepAlive_FixingFirefoxConnectIssue() throws IOException {
         this.headers.set("connection", "keep-alive, Upgrade");
         handler.handle(exchange);
+        testResponseHeader(Util.HEADER_WEBSOCKET_ACCEPT, "HSmrc0sMlYUkAGmm5OPpG2HaGWk=");
+        testResponseHeader(Util.HEADER_WEBSOCKET_PROTOCOL, "chat");
     }
 
     @Test

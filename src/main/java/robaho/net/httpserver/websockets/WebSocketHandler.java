@@ -8,6 +8,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 import robaho.net.httpserver.Code;
+import robaho.net.httpserver.Utils;
 
 public abstract class WebSocketHandler implements HttpHandler {
 
@@ -58,11 +59,9 @@ public abstract class WebSocketHandler implements HttpHandler {
 
     public static boolean isWebsocketRequested(Headers headers) {
         // check if Upgrade connection
-        String connection = headers.getFirst(Util.HEADER_CONNECTION);
-        if (connection == null || !connection.equalsIgnoreCase(Util.HEADER_CONNECTION_VALUE)) {
-            return false;
-        }
-        // check for proper upgrade tyoe
+        var values = headers.get(Util.HEADER_CONNECTION);
+        if(values==null || values.stream().filter(s -> Utils.containsIgnoreCase(s, Util.HEADER_CONNECTION_VALUE)).findAny().isEmpty()) return false;
+        // check for proper upgrade type
         String upgrade = headers.getFirst(Util.HEADER_UPGRADE);
         return Util.HEADER_UPGRADE_VALUE.equalsIgnoreCase(upgrade);
     }
