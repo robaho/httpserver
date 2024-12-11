@@ -12,7 +12,7 @@ All async functionality has been removed. All synchronized blocks were removed i
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
 
-Improved performance by more than **3x** over the JDK implementation, using http pipelining, optimized String parsing, etc.
+Improved performance by more than **10x** over the JDK implementation, using http pipelining, optimized String parsing, etc.
 
 Designed for embedding with only a 90kb jar and zero dependencies.
 
@@ -47,7 +47,7 @@ This version performs more than **10x** better than the JDK version when tested 
 The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-wrk)<sup>2</sup>
 
 <sup>1</sup>_The robaho version has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
-<sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor. `go-wrk` was tested using the Tech Empower server process._
+<sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor._
 
 **robaho tech empower**
 ```
