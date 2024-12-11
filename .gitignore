@@ -5,3 +5,6 @@ gradle.properties
 .vscode
 .DS_Store
 fileserver/
+gradlew.bat
+gradle/
+gradle/
