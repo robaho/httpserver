@@ -32,12 +32,13 @@ import java.io.*;
  * close() does not close the underlying stream
  */
 
-class UndefLengthInputStream extends LeftOverInputStream {
+final class UndefLengthInputStream extends LeftOverInputStream {
 
     UndefLengthInputStream(ExchangeImpl t, InputStream src) {
         super(t, src);
     }
 
+    @Override
     protected int readImpl(byte[] b, int off, int len) throws IOException {
 
         int n = in.read(b, off, len);
@@ -46,17 +47,21 @@ class UndefLengthInputStream extends LeftOverInputStream {
         return n;
     }
 
+    @Override
     public int available() throws IOException {
         return in.available();
     }
 
+    @Override
     public boolean markSupported() {
         return false;
     }
 
+    @Override
     public void mark(int l) {
     }
 
+    @Override
     public void reset() throws IOException {
         throw new IOException("mark/reset not supported");
     }

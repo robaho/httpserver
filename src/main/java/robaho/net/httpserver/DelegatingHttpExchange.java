@@ -44,64 +44,81 @@ public abstract class DelegatingHttpExchange extends HttpExchange {
         this.exchange = ex;
     }
 
+    @Override
     public abstract Headers getRequestHeaders();
 
+    @Override
     public abstract String getRequestMethod();
 
+    @Override
     public abstract URI getRequestURI();
 
+    @Override
     public Headers getResponseHeaders() {
         return exchange.getResponseHeaders();
     }
 
+    @Override
     public HttpContext getHttpContext() {
         return exchange.getHttpContext();
     }
 
+    @Override
     public void close() {
         exchange.close();
     }
 
+    @Override
     public InputStream getRequestBody() {
         return exchange.getRequestBody();
     }
 
+    @Override
     public int getResponseCode() {
         return exchange.getResponseCode();
     }
 
+    @Override
     public OutputStream getResponseBody() {
         return exchange.getResponseBody();
     }
 
+    @Override
     public void sendResponseHeaders(int rCode, long contentLen) throws IOException {
         exchange.sendResponseHeaders(rCode, contentLen);
     }
 
+    @Override
     public InetSocketAddress getRemoteAddress() {
         return exchange.getRemoteAddress();
     }
 
+    @Override
     public InetSocketAddress getLocalAddress() {
         return exchange.getLocalAddress();
     }
 
+    @Override
     public String getProtocol() {
         return exchange.getProtocol();
     }
 
+    @Override
     public Object getAttribute(String name) {
         return exchange.getAttribute(name);
     }
 
+    @Override
     public void setAttribute(String name, Object value) {
         exchange.setAttribute(name, value);
     }
 
+    @Override
     public void setStreams(InputStream i, OutputStream o) {
         exchange.setStreams(i, o);
     }
 
+    @Override
     public HttpPrincipal getPrincipal() {
         return exchange.getPrincipal();
     }

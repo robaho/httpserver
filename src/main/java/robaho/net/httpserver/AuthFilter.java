@@ -29,7 +29,7 @@ import com.sun.net.httpserver.*;
 
 import java.io.*;
 
-public class AuthFilter extends Filter {
+public final class AuthFilter extends Filter {
 
     private Authenticator authenticator;
 
@@ -37,6 +37,7 @@ public class AuthFilter extends Filter {
         this.authenticator = authenticator;
     }
 
+    @Override
     public String description() {
         return "Authentication filter";
     }
@@ -56,6 +57,7 @@ public class AuthFilter extends Filter {
     /**
      * The filter's implementation, which is invoked by the server
      */
+    @Override
     public void doFilter(HttpExchange t, Filter.Chain chain) throws IOException {
         if (authenticator != null) {
             Authenticator.Result r = authenticator.authenticate(t);

@@ -48,12 +48,13 @@ abstract class LeftOverInputStream extends FilterInputStream {
     protected boolean eof = false;
     byte[] one = new byte[1];
 
-    public LeftOverInputStream(ExchangeImpl t, InputStream src) {
+    protected LeftOverInputStream(ExchangeImpl t, InputStream src) {
         super(src);
         this.t = t;
         this.server = t.getServerImpl();
     }
 
+    @Override
     public void close() throws IOException {
         if (closed) {
             return;
@@ -64,12 +65,13 @@ abstract class LeftOverInputStream extends FilterInputStream {
         }
     }
 
-    public boolean isClosed() {
+    protected boolean isClosed() {
         return closed;
     }
 
     protected abstract int readImpl(byte[] b, int off, int len) throws IOException;
 
+    @Override
     public synchronized int read() throws IOException {
         if (closed) {
             throw new EOFException("Stream is closed");
@@ -82,6 +84,7 @@ abstract class LeftOverInputStream extends FilterInputStream {
         }
     }
 
+    @Override
     public synchronized int read(byte[] b, int off, int len) throws IOException {
         if (closed) {
             throw new EOFException("Stream is closed");
@@ -97,7 +100,7 @@ abstract class LeftOverInputStream extends FilterInputStream {
      * is at eof (ie. all bytes were read) or false if not
      * (still bytes to be read)
      */
-    public boolean drain(long l) throws IOException {
+    protected boolean drain(long l) throws IOException {
 
         while (l > 0) {
             if (server.isFinishing()) {
@@ -113,7 +116,7 @@ abstract class LeftOverInputStream extends FilterInputStream {
         }
         return false;
     }
-    public InputStream getRawInputStream() {
+    protected InputStream getRawInputStream() {
         return super.in;
     }
 }

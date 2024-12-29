@@ -37,15 +37,16 @@ import java.util.Objects;
  * The underlying connection needs to be closed afterwards.
  */
 
-class UndefLengthOutputStream extends FilterOutputStream {
+final class UndefLengthOutputStream extends FilterOutputStream {
     private boolean closed = false;
-    ExchangeImpl t;
+    private final ExchangeImpl t;
 
     UndefLengthOutputStream(ExchangeImpl t, OutputStream src) {
         super(src);
         this.t = t;
     }
 
+    @Override
     public void write(int b) throws IOException {
         if (closed) {
             throw new IOException("stream closed");
@@ -53,6 +54,7 @@ class UndefLengthOutputStream extends FilterOutputStream {
         out.write(b);
     }
 
+    @Override
     public void write(byte[] b, int off, int len) throws IOException {
         Objects.checkFromIndexSize(off, len, b.length);
         if (len == 0) {
@@ -64,6 +66,7 @@ class UndefLengthOutputStream extends FilterOutputStream {
         out.write(b, off, len);
     }
 
+    @Override
     public void close() throws IOException {
         if (closed) {
             return;
