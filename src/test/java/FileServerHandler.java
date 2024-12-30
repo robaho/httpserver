@@ -26,8 +26,12 @@ import java.util.concurrent.*;
 import java.util.logging.*;
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.*;
+
 import javax.net.ssl.*;
+
 import com.sun.net.httpserver.*;
 
 /**
@@ -57,14 +61,18 @@ public class FileServerHandler implements HttpHandler {
         URI uri = t.getRequestURI();
         String path = uri.getPath();
 
-        int x = 0;
-        while (is.read () != -1) x++;
+        is.readAllBytes();
         is.close();
+
         File f = new File (docroot, path);
+        Path filepath = Files.isSymbolicLink(f.toPath()) ? Files.readSymbolicLink(f.toPath()) : f.toPath();
+        f = filepath.toFile();
+
         if (!f.exists()) {
             notfound (t, path);
             return;
         }
+
         String fixedrequest = map.getFirst ("XFixed");
 
         String method = t.getRequestMethod();
@@ -109,21 +117,9 @@ public class FileServerHandler implements HttpHandler {
                 clen = 0;
             }
             t.sendResponseHeaders (200, clen);
-            OutputStream os = t.getResponseBody();
-            FileInputStream fis = new FileInputStream (f);
-            int count = 0;
-            try {
-                byte[] buf = new byte [16 * 1024];
-                int len;
-                while ((len=fis.read (buf)) != -1) {
-                    os.write (buf, 0, len);
-                    count += len;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+            try (OutputStream os = t.getResponseBody(); FileInputStream fis = new FileInputStream (f)) {
+                fis.transferTo(os);
             }
-            fis.close();
-            os.close();
         }
     }
 

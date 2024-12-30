@@ -28,6 +28,7 @@ import java.net.*;
 
 import com.sun.net.httpserver.*;
 
+import jdk.test.lib.net.SimpleSSLContext;
 import robaho.net.httpserver.LogFilter;
 import robaho.net.httpserver.extras.ContentEncoding;
 import robaho.net.httpserver.extras.QueryParameters;
@@ -60,10 +61,19 @@ public class SimpleFileServer {
         String rootDir = args[0];
         int port = Integer.parseInt(args[1]);
         String logfile = args[2];
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 200);
+        HttpServer server;
+        if(port==443) {
+            var httpsServer = HttpsServer.create(new InetSocketAddress(port), 8192);
+            var ctx = new SimpleSSLContext().get();
+            httpsServer.setHttpsConfigurator(new HttpsConfigurator (ctx));
+            server = httpsServer;
+        } else {
+            server = HttpServer.create(new InetSocketAddress(port), 8192);
+        }
         HttpHandler h = new FileServerHandler(rootDir);
         HttpHandler h1 = new EchoHandler();
         HttpHandler h2 = new DevNullHandler();
+        HttpHandler h3 = new HelloWorldHandler();
 
         HttpContext c = server.createContext("/files", h);
         c.getFilters().add(new LogFilter(new File(logfile)));
@@ -74,8 +84,11 @@ public class SimpleFileServer {
         HttpContext c2 = server.createContext("/devnull", h2);
         c2.getFilters().add(new LogFilter(new File(logfile)));
 
+        HttpContext c3 = server.createContext("/", h3);
+
+
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
-        // server.setExecutor(Executors.newCachedThreadPool());
+        // server.setExecutor(Executors.newFixedThreadPool(8));
         server.start();
     }
 
@@ -97,5 +110,16 @@ public class SimpleFileServer {
             os.close();
         }
 
+    }
+    private static class HelloWorldHandler implements HttpHandler {
+        private static final byte[] bytes = "Hello World".getBytes();
+        public void handle(HttpExchange exchange) throws IOException {
+            QueryParameters qp = QueryParameters.decode(ContentEncoding.encoding(exchange.getRequestHeaders()), exchange.getRequestURI().getQuery());
+            long size = bytes.length;
+            exchange.sendResponseHeaders(200, size);
+            OutputStream os = exchange.getResponseBody();
+            os.write(bytes);
+            os.close();
+        }
     }
 }

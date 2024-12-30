@@ -33,7 +33,7 @@ import java.security.PrivilegedAction;
  */
 
 @SuppressWarnings("removal")
-class ServerConfig {
+public class ServerConfig {
 
     private static final int DEFAULT_IDLE_TIMER_SCHEDULE_MILLIS = 10000; // 10 sec.
 
@@ -49,6 +49,10 @@ class ServerConfig {
     private static final long DEFAULT_REQ_RSP_TIMER_TASK_SCHEDULE_MILLIS = 1000;
     private static final int DEFAULT_MAX_REQ_HEADERS = 200;
     private static final long DEFAULT_DRAIN_AMOUNT = 64 * 1024;
+
+    private static final int DEFAULT_HTTP2_MAX_FRAME_SIZE = 16384;
+    private static final int DEFAULT_HTTP2_INITIAL_WINDOW_SIZE = 65535;
+    private static final int DEFAULT_HTTP2_MAX_CONCURRENT_STREAMS = -1; // use -1 for no limit
 
     private static long idleTimerScheduleMillis;
     private static long idleIntervalMillis;
@@ -70,6 +74,12 @@ class ServerConfig {
 
     // the value of the TCP_NODELAY socket-level option
     private static boolean noDelay;
+
+    private static boolean http2OverSSL;
+    private static boolean http2OverNonSSL;
+    private static int http2MaxFrameSize;
+    private static int http2InitialWindowSize;
+    private static int http2MaxConcurrentStreams;
 
     static {
         java.security.AccessController.doPrivileged(
@@ -125,6 +135,14 @@ class ServerConfig {
                         debug = Boolean.getBoolean(pkg + ".debug");
 
                         noDelay = Boolean.getBoolean(pkg + ".nodelay");
+
+                        http2OverSSL = Boolean.getBoolean(pkg + ".http2OverSSL");
+                        http2OverNonSSL = Boolean.getBoolean(pkg + ".http2OverNonSSL");
+
+                        http2MaxFrameSize = Integer.getInteger(pkg + ".http2MaxFrameSize", DEFAULT_HTTP2_MAX_FRAME_SIZE);
+                        http2InitialWindowSize = Integer.getInteger(pkg + ".http2InitialWindowSize", DEFAULT_HTTP2_INITIAL_WINDOW_SIZE);
+
+                        http2MaxConcurrentStreams = Integer.getInteger(pkg + ".http2MaxConcurrentStreams", DEFAULT_HTTP2_MAX_CONCURRENT_STREAMS);
 
                         return null;
                     }
@@ -215,5 +233,24 @@ class ServerConfig {
 
     static boolean noDelay() {
         return noDelay;
+    }
+
+    public static boolean http2OverSSL() {
+        return http2OverSSL;
+    }
+    public static boolean http2OverNonSSL() {
+        return http2OverNonSSL;
+    }
+    public static int http2MaxFrameSize() {
+        return http2MaxFrameSize;
+    }
+    public static int http2InitialWindowSize() {
+        return http2InitialWindowSize;
+    }
+    /**
+     * @return the maximum number of concurrent streams per connection, or -1 for no limit
+     */
+    public static int http2MaxConcurrentStreams() {
+        return http2MaxConcurrentStreams;
     }
 }

@@ -32,7 +32,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
@@ -42,7 +44,7 @@ import javax.net.ssl.SSLSocket;
  * one of these is hung from the selector attachment and is used to locate
  * everything from that.
  */
-class HttpConnection {
+public class HttpConnection {
     private static final Logger logger = System.getLogger("robaho.net.httpserver");
 
     HttpContextImpl context;
@@ -57,27 +59,40 @@ class HttpConnection {
     volatile long lastActivityTime;
     volatile boolean noActivity;
     volatile boolean inRequest;
-    volatile long requestCount;
 
-    SSLSession getSSLSession() {
-        return (socket instanceof SSLSocket ssl) ? ssl.getHandshakeSession() : null;
-    }
+    public AtomicLong requestCount = new AtomicLong();
+    private final String connectionId;
 
-    @Override
-    public String toString() {
-        final var sb = new StringBuilder(HttpConnection.class.getSimpleName());
-        if (socket != null) {
-            sb.append(" (");
-            sb.append(socket);
-            sb.append(")");
-        }
-        return sb.toString();
+    public boolean isClosed() {
+        return closed;
     }
 
     HttpConnection(Socket socket) throws IOException {
         this.socket = socket;
         this.is = new NoSyncBufferedInputStream(new ActivityTimerInputStream(socket.getInputStream()));
         this.os = new NoSyncBufferedOutputStream(new ActivityTimerOutputStream(socket.getOutputStream()));
+        connectionId = "["+socket.getLocalPort()+"."+socket.getPort()+"]";
+    }
+
+    SSLSession getSSLSession() {
+        return (socket instanceof SSLSocket ssl) ? ssl.getHandshakeSession() : null;
+    }
+
+    public boolean isSSL() {
+        return socket instanceof SSLSocket;
+    }
+
+    @Override
+    public String toString() {
+        return connectionId;
+    }
+
+    public InetSocketAddress getRemoteAddress() {
+        return (InetSocketAddress) socket.getRemoteSocketAddress();
+    }
+
+    public InetSocketAddress getLocalAddress() {
+        return (InetSocketAddress) socket.getLocalSocketAddress();
     }
 
     void setContext(HttpContextImpl ctx) {
@@ -95,7 +110,7 @@ class HttpConnection {
         closed = true;
 
         if (socket != null) {
-            if(requestCount==0) {
+            if(requestCount.get()==0) {
                 logger.log(Level.WARNING, "closing connection: remote "+socket.getRemoteSocketAddress() + " with 0 requests");
             } else {
                 logger.log(Level.TRACE, () -> "Closing connection: remote " + socket.getRemoteSocketAddress());

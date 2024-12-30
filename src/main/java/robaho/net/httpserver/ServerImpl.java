@@ -24,6 +24,7 @@
  */
 package robaho.net.httpserver;
 
+import java.io.EOFException;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 import java.io.IOException;
@@ -63,6 +64,11 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
+
+import robaho.net.httpserver.http2.HTTP2Connection;
+import robaho.net.httpserver.http2.HTTP2ErrorCode;
+import robaho.net.httpserver.http2.HTTP2Exception;
+import robaho.net.httpserver.http2.HTTP2Stream;
 
 /**
  * Provides implementation for both HTTP and HTTPS
@@ -126,18 +132,16 @@ class ServerImpl {
         this.protocol = protocol;
         this.wrapper = wrapper;
 
+        socket = new ServerSocket();
+
         this.logger = System.getLogger("robaho.net.httpserver."+System.identityHashCode(this));
-        java.util.logging.Logger.getLogger(this.logger.getName()).setFilter(new java.util.logging.Filter(){
-            @Override
-            public boolean isLoggable(LogRecord record) {
-                record.setMessage("["+protocol+":"+socket.getLocalPort()+"] "+record.getMessage());
-                return true;
-            }
+        java.util.logging.Logger.getLogger(this.logger.getName()).setFilter((LogRecord record) -> {
+            record.setMessage("["+protocol+":"+socket.getLocalPort()+"] "+record.getMessage());
+            return true;
         });
 
         https = protocol.equalsIgnoreCase("https");
         contexts = new ContextList();
-        socket = new ServerSocket();
         if (addr != null) {
             socket.bind(addr, backlog);
             bound = true;
@@ -147,6 +151,7 @@ class ServerImpl {
         timer = new Timer("connection-cleaner", true);
         timer.schedule(new ConnectionCleanerTask(), IDLE_TIMER_TASK_SCHEDULE, IDLE_TIMER_TASK_SCHEDULE);
         timer.schedule(ActivityTimer.createTask(),750,750);
+        timer.schedule(Http2Exchange.createTask(),1000,1000);
         logger.log(Level.DEBUG, "HttpServer created " + protocol + " " + addr);
         if(Boolean.getBoolean("robaho.net.httpserver.EnableStats")) {
             createContext("/__stats",new StatsHandler());
@@ -377,21 +382,50 @@ class ServerImpl {
                         s.setTcpNoDelay(true);
                     }
 
+                    boolean http2 = false;
+
                     if (https) {
                         // for some reason, creating an SSLServerSocket and setting the default parameters would
                         // not work, so upgrade to a SSLSocket after connection
                         SSLSocketFactory ssf = httpsConfig.getSSLContext().getSocketFactory();
                         SSLSocket sslSocket = (SSLSocket) ssf.createSocket(s, null, false);
+                        sslSocket.setHandshakeApplicationProtocolSelector((_sslSocket, protocols) -> {
+                            if (protocols.contains("h2") && ServerConfig.http2OverSSL()) {
+                                return "h2";
+                            } else {
+                                return "http/1.1";
+                            }
+                        });
                         sslSocket.setUseClientMode(false);
+                        // the following forces the SSL handshake to complete in order to determine the negotiated protocol
+                        var session = sslSocket.getSession();
+
+                        if ("h2".equals(sslSocket.getApplicationProtocol())) {
+                            logger.log(Level.DEBUG, () -> "http2 connection "+sslSocket.toString());
+                            http2 = true;
+                        } else {
+                            logger.log(Level.DEBUG, () -> "http/1.1 connection "+sslSocket.toString());
+                        }
                         s = sslSocket;
                     }
 
-                    HttpConnection c = new HttpConnection(s);
+                    HttpConnection c;
+                    try {
+                        c = new HttpConnection(s);
+                    } catch (IOException e) {
+                        logger.log(Level.WARNING, "Failed to create HttpConnection", e);
+                        continue;
+                    }
                     try {
                         allConnections.add(c);
 
-                        Exchange t = new Exchange(protocol, c);
-                        executor.execute(t);
+                        if (http2) {
+                            Http2Exchange t = new Http2Exchange(protocol, c);
+                            executor.execute(t);
+                        } else {
+                            Exchange t = new Exchange(protocol, c);
+                            executor.execute(t);
+                        }
 
                     } catch (Exception e) {
                         logger.log(Level.TRACE, "Dispatcher Exception", e);
@@ -416,6 +450,159 @@ class ServerImpl {
         logger.log(Level.TRACE, () -> "closing connection: " + conn.toString());
         conn.close();
         allConnections.remove(conn);
+    }
+
+    /* used to link to 2 or more Filter.Chains together */
+    class LinkHandler implements HttpHandler {
+
+        Filter.Chain nextChain;
+
+        LinkHandler(Filter.Chain nextChain) {
+            this.nextChain = nextChain;
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            nextChain.doFilter(exchange);
+        }
+    }
+
+    class Http2Exchange implements Runnable,HTTP2Connection.StreamHandler {
+        final HttpConnection connection;
+        final HTTP2Connection http2;
+        final String protocol;
+
+        private static final Set<Http2Exchange> allHttp2Exchanges = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        Http2Exchange(String protocol, HttpConnection conn) throws IOException {
+            this.connection = conn;
+            this.protocol = protocol;
+
+            http2 = new HTTP2Connection(conn, connection.getInputStream(), connection.getOutputStream(), this);
+        }
+
+        static TimerTask createTask() {
+            return new TimerTask() {
+                @Override
+                public void run() {
+                    long now = System.currentTimeMillis();
+                    for(var exchange : allHttp2Exchanges) {
+                        if(exchange.connection.lastActivityTime + 1000 < now) {
+                            try {
+                                exchange.http2.sendPing();
+                            } catch (IOException ex) {
+                            }
+                        }
+                    }
+                }
+        };
+    }
+
+        @Override
+        public void run() {
+            allHttp2Exchanges.add(this);
+
+            try {
+                if(!http2.hasProperPreface()) {
+                    http2.sendGoAway(HTTP2ErrorCode.PROTOCOL_ERROR);
+                    logger.log(Level.WARNING, "ServerImpl HTTP2 preface failed");
+                    return;
+                }
+                http2.sendMySettings();
+                http2.handle();
+            } catch (HTTP2Exception ex) {
+                logger.log(Level.WARNING, "ServerImpl http2 protocol exception "+http2, ex.getMessage());
+            } catch (EOFException ex) {
+                logger.log(Level.DEBUG, "end of stream "+http2);
+            } catch (Exception ex) {
+                logger.log(Level.WARNING, "ServerImpl unexpected exception handling http2 connection "+http2, ex);
+            } finally {
+                try {
+                    logger.log(Level.DEBUG, "closing HTTP2 connection and streams "+http2);
+                    closeConnection(connection);
+                    http2.close();
+                } catch (Throwable t) {
+                    logger.log(Level.WARNING, "error closing http2 connection "+http2, t);
+                }
+                allHttp2Exchanges.remove(this);
+            }
+        }
+
+        @Override
+        public Executor getExecutor() {
+            return ServerImpl.this.executor;
+        }
+
+        @Override
+        public void handleStream(HTTP2Stream stream,InputStream in, OutputStream out) throws IOException {
+            connection.requestCount.incrementAndGet();
+            requestCount.incrementAndGet();
+
+            var request = stream.getRequestHeaders();
+            var response = stream.getResponseHeaders();
+
+            String scheme = https ? "https" : "http";
+            String authority = request.getFirst(":authority");
+            String path = request.getFirst(":path");
+            String query = request.getFirst(":query");
+
+            logger.log(Level.TRACE, () -> "http2 stream started "+stream.toString());
+
+            if (authority == null || path == null) {
+                throw new IOException("Invalid HTTP/2 headers: missing :authority or :path");
+            }
+
+            StringBuilder uriBuilder = new StringBuilder();
+            uriBuilder.append(scheme).append("://").append(authority).append(path);
+            if (query != null) {
+                uriBuilder.append("?").append(query);
+            }
+
+            request.add("Host",authority);
+
+            URI uri;
+            try {
+                uri = new URI(uriBuilder.toString());
+            } catch (URISyntaxException e) {
+                throw new IOException("Invalid URI syntax", e);
+            }
+            String method = request.getFirst(":method");
+            if (method == null) {
+                throw new IOException("Invalid HTTP/2 headers: missing :method");
+            }
+
+            // Validate Transfer-Encoding headers for HTTP/2
+            List<String> transferEncoding = request.get("Transfer-encoding");
+            if (transferEncoding != null && !transferEncoding.isEmpty()) {
+                if (transferEncoding.size() > 1 || !transferEncoding.get(0).equalsIgnoreCase("chunked")) {
+                    throw new IOException("Unsupported Transfer-Encoding value");
+                }
+            }
+
+            String uriPath = Optional.ofNullable(uri.getPath()).orElse("/");
+            HttpContextImpl ctx = contexts.findContext(protocol, uriPath);
+            if (ctx == null) {
+                logger.log(Level.DEBUG, "No context found for request "+uriPath+", rejecting as not found");
+                response.set(":status","404");
+                stream.writeResponseHeaders();
+                out.close();
+                return;
+            }
+
+            logger.log(Level.DEBUG,() -> "http2 request on "+connection+" "+method+" for "+uri);
+
+            final List<Filter> sf = ctx.getSystemFilters();
+            final List<Filter> uf = ctx.getFilters();
+
+            final Filter.Chain sc = new Filter.Chain(sf, ctx.getHandler());
+            final Filter.Chain uc = new Filter.Chain(uf, new LinkHandler(sc));
+
+            if (https) {
+                uc.doFilter(new Http2ExchangeImpl(stream,uri,method,ctx,request,response,in,out));
+            } else {
+                uc.doFilter(new Http2ExchangeImpl(stream,uri,method,ctx,request,response,in,out));
+            }
+        }
     }
 
     /* per exchange task */
@@ -480,8 +667,17 @@ class ServerImpl {
             logger.log(Level.TRACE,"reading request");
 
             connection.inRequest = false;
+
             Request req = new Request(rawin, rawout);
             final String requestLine = req.requestLine();
+
+            if("PRI * HTTP/2.0".equals(requestLine) && ServerConfig.http2OverNonSSL()) {
+                logger.log(Level.DEBUG,"found http2 request on non-SSL assuming prior knowledge");
+                Http2Exchange exchange = new Http2Exchange(protocol, connection);
+                exchange.run();
+                return;
+            }
+
             connection.inRequest = true;
 
             if (requestLine == null) {
@@ -490,7 +686,7 @@ class ServerImpl {
                 closeConnection(connection);
                 return;
             }
-            connection.requestCount++;
+            connection.requestCount.incrementAndGet();
             requestCount.incrementAndGet();
 
             logger.log(Level.DEBUG, () -> "Exchange request line: "+ requestLine);
@@ -520,6 +716,7 @@ class ServerImpl {
             start = space + 1;
             String version = requestLine.substring(start);
             Headers headers = req.headers();
+
             /* check key for illegal characters, impossible since Headers class validates on mutation */
             // for (var k : headers.keySet()) {
             //     if (!isValidName(k)) {
@@ -643,21 +840,6 @@ class ServerImpl {
                 // logger.log(Level.INFO,"flushing response");
                 // tx.getResponseBody().flush();
                 tx = null;
-            }
-        }
-
-        /* used to link to 2 or more Filter.Chains together */
-        class LinkHandler implements HttpHandler {
-
-            Filter.Chain nextChain;
-
-            LinkHandler(Filter.Chain nextChain) {
-                this.nextChain = nextChain;
-            }
-
-            @Override
-            public void handle(HttpExchange exchange) throws IOException {
-                nextChain.doFilter(exchange);
             }
         }
 
