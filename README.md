@@ -8,6 +8,8 @@ It has basic server-side proxy support using [ProxyHandler](https://github.com/r
 
 ProxyHandler also supports tunneling proxies using CONNECT for https.
 
+It supports Http2 [RFC 9113](https://www.rfc-editor.org/rfc/rfc9113.html)
+
 All async functionality has been removed. All synchronized blocks were removed in favor of other Java concurrency concepts.
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
@@ -165,6 +167,10 @@ The counts can be reset using `/__stats?reset`. The `requests/sec` is calculated
   <version>1.0.11</version>
 </dependency>
 ```
-## future work
+## enable Http2
 
-There is no http2 support.
+Use `-Drobaho.net.httpserver.http2.http2OverSSL` to enable Http2 only via SSL connections.
+
+Use `-Drobaho.net.httpserver.http2.http2OverNonSSL` to enable Http2 on Non-SSL connections (which requires prior knowledge). The Http2 upgrade mechanism was deprecated in RFC 9113 so it is not supported.
+
+See the additional Http2 options in `ServerConfig.java`
