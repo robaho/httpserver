@@ -130,10 +130,10 @@ task runSimpleFileServer(type: Test) {
             main "SimpleFileServer"
             systemProperties = props
             args = ['fileserver','8080','fileserver/logfile.txt']
-            debugOptions {
-                enabled = true
-                suspend = false
-            }
+            // debugOptions {
+            //     enabled = true
+            //     suspend = false
+            // }
         }
     }
 }
@@ -153,7 +153,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'io.github.robaho'
             artifactId = 'httpserver'
-            version = "1.0.11"
+            version = "1.0.12"
 
             from components.java
 
