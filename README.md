@@ -192,6 +192,8 @@ TODO: outbound headers are only minimally compressed/indexed.
 
 All tests were run on the same hardware with the same JDK23 version.
 
+Using `h2load -n 1000000 -m 1000 -c 16 http://localhost:<port>`
+
 Jetty 11
 ```
 starting benchmark...
