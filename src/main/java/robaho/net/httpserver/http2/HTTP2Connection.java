@@ -71,6 +71,7 @@ public class HTTP2Connection {
 
     final AtomicLong sendWindow = new AtomicLong(65535);
     final AtomicInteger receiveWindow = new AtomicInteger(65535);
+    final AtomicInteger requestsInProgress = new AtomicInteger();
 
     private int maxConcurrentStreams = -1;
     private int highNumberStreams = 0;
@@ -329,12 +330,18 @@ public class HTTP2Connection {
 	}
 
 	public void updateRemoteSettings(SettingsFrame remoteSettingFrame) throws HTTP2Exception {
+        logger.log(Level.TRACE,() -> "updating remote settings");
+
         for (SettingParameter parameter : remoteSettingFrame.getSettingParameters()) {
+            long oldInitialWindowSize = remoteSettings.getOrDefault(SettingIdentifier.SETTINGS_INITIAL_WINDOW_SIZE, SettingParameter.DEFAULT_INITIAL_WINDOWSIZE).value;
             if(parameter.identifier == SettingIdentifier.SETTINGS_INITIAL_WINDOW_SIZE) {
                 if(parameter.value > 2147483647) {
                     throw new HTTP2Exception(HTTP2ErrorCode.FLOW_CONTROL_ERROR,"Invalid value for SETTINGS_INITIAL_WINDOW_SIZE "+parameter.value);
                 }
                 logger.log(Level.DEBUG,() -> "received initial window size of "+parameter.value);
+                for(var stream : http2Streams.values()) {
+                    stream.sendWindow.addAndGet(parameter.value-oldInitialWindowSize);
+                }
             }
             if(parameter.identifier == SettingIdentifier.SETTINGS_MAX_FRAME_SIZE) {
                 logger.log(Level.DEBUG,() -> "received max frame size "+parameter.value);
@@ -344,6 +351,7 @@ public class HTTP2Connection {
 	}
 
 	public void sendSettingsAck() throws IOException {
+        logger.log(Level.TRACE,() -> "sending Settings Ack");
         lock();
         try {
             SettingsFrame frame = new SettingsFrame();
@@ -351,7 +359,7 @@ public class HTTP2Connection {
             outputStream.flush();
         } finally {
             unlock();
-            logger.log(Level.TRACE,() -> "Sent Settings Ack");
+            logger.log(Level.TRACE,() -> "sent Settings Ack");
         }
 	}
 	public void sendMySettings() throws IOException {

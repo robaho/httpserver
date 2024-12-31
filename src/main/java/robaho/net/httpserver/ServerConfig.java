@@ -80,6 +80,7 @@ public class ServerConfig {
     private static int http2MaxFrameSize;
     private static int http2InitialWindowSize;
     private static int http2MaxConcurrentStreams;
+    private static boolean http2DisableFlushDelay;
 
     static {
         java.security.AccessController.doPrivileged(
@@ -143,6 +144,7 @@ public class ServerConfig {
                         http2InitialWindowSize = Integer.getInteger(pkg + ".http2InitialWindowSize", DEFAULT_HTTP2_INITIAL_WINDOW_SIZE);
 
                         http2MaxConcurrentStreams = Integer.getInteger(pkg + ".http2MaxConcurrentStreams", DEFAULT_HTTP2_MAX_CONCURRENT_STREAMS);
+                        http2DisableFlushDelay = Boolean.getBoolean(pkg + ".http2DisableFlushDelay");
 
                         return null;
                     }
@@ -253,4 +255,12 @@ public class ServerConfig {
     public static int http2MaxConcurrentStreams() {
         return http2MaxConcurrentStreams;
     }
+    /**
+     * @return true if delaying flush is enabled. disabling the flush delay can improve
+     * latency at the expense of throughput
+     */
+    public static boolean http2DisableFlushDelay() {
+        return http2DisableFlushDelay;
+    }
+
 }

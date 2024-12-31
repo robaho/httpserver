@@ -28,7 +28,6 @@ public enum FrameType {
 			if (e.getValue() == value)
 				return e;
 		}
-        System.out.println("FrameType.getEnum: value not found: " + value);
 		return FrameType.NOT_IMPLEMENTED;
 	}
 }

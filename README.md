@@ -178,3 +178,50 @@ Use `-Drobaho.net.httpserver.http2OverNonSSL=true` to enable Http2 on Non-SSL co
 See the additional Http2 options in `ServerConfig.java`
 
 The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
+
+## Http2 performance
+
+Http2 performance has not yet been optimized, but an unscientific test shows the http2 implementation to have greater than 50% better throughput than the Javalin/Jetty 11 version.
+
+The Javalin/Jetty project is available [here](https://github.com/robaho/javalin-http2-example)
+
+TODO: outbound headers are only minimally compressed/indexed.
+
+<details>
+    <summary>performance details</summary>
+
+All tests were run on the same hardware with the same JDK23 version.
+
+Jetty 11
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: h2c
+finished in 5.25s, 190298.69 req/s, 6.72MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 35.29MB (37003264) total, 7.63MB (8002384) headers (space savings 90.12%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:      160us     52.24ms      7.76ms      3.94ms    67.73%
+time for connect:      235us      8.82ms      4.73ms      2.68ms    62.50%
+time to 1st byte:    11.16ms     33.62ms     20.95ms      9.28ms    50.00%
+req/s           :   11894.25    12051.63    11957.08       58.94    56.25%
+```
+
+robaho http2
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: h2c
+finished in 2.97s, 336884.32 req/s, 14.14MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 41.96MB (44000480) total, 5.72MB (6000000) headers (space savings 76.92%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:      406us     83.67ms     25.15ms     13.16ms    67.28%
+time for connect:      188us     11.70ms      5.99ms      3.69ms    56.25%
+time to 1st byte:    14.13ms     31.81ms     22.80ms      6.61ms    43.75%
+req/s           :   21059.44    21271.63    21141.16       75.01    68.75%
+```
+
+</details>

@@ -13,6 +13,8 @@ public class SettingParameter {
 	public SettingIdentifier identifier;
 	public long value;
 
+    public static SettingParameter DEFAULT_INITIAL_WINDOWSIZE = new SettingParameter(SettingIdentifier.SETTINGS_INITIAL_WINDOW_SIZE,65535);
+
     public SettingParameter() {
     }
   

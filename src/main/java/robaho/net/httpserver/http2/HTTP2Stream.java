@@ -17,6 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.sun.net.httpserver.Headers;
 
 import robaho.net.httpserver.NoSyncBufferedOutputStream;
+import robaho.net.httpserver.ServerConfig;
 import robaho.net.httpserver.http2.hpack.HPackContext;
 import robaho.net.httpserver.http2.frame.BaseFrame;
 import robaho.net.httpserver.http2.frame.DataFrame;
@@ -31,7 +32,8 @@ public class HTTP2Stream {
 
     private final int streamId;
 
-    private final AtomicLong sendWindow = new AtomicLong(65535);
+    // needs to be accessible for connection to adjust based on SettingsFrame
+    final AtomicLong sendWindow = new AtomicLong(65535);
 
     private final HTTP2Connection connection;
     private final Logger logger;
@@ -96,21 +98,11 @@ public class HTTP2Stream {
         try {
             pipe.close();
             outputStream.close();
-
-            connection.lock();
-            try {
-                // if stream was already closed, then ResetFrame was received, so do not send end of stream
-                FrameHeader header = new FrameHeader(0, FrameType.DATA, EnumSet.of(FrameFlag.END_STREAM), streamId);
-                header.writeTo(connection.outputStream);
-                connection.outputStream.flush();
-            } finally {
-                connection.unlock();
-            }
             if(thread!=null)
                 thread.interrupt();
         } catch (IOException e) {
             if(!connection.isClosed()) {
-                logger.log(Level.WARNING,"IOException closing http2 stream",e);
+                logger.log(connection.httpConnection.requestCount.get()>0 ? Level.WARNING : Level.DEBUG,"IOException closing http2 stream",e);
             }
         } finally {
         }
@@ -175,6 +167,7 @@ public class HTTP2Stream {
 
     private void performRequest(boolean halfClosed) throws IOException {
         connection.httpConnection.requestCount.incrementAndGet();
+        connection.requestsInProgress.incrementAndGet();
 
         InputStream in = halfClosed ? InputStream.nullInputStream() : pipe.getInputStream();
         
@@ -200,7 +193,6 @@ public class HTTP2Stream {
                 return;
             }
             HPackContext.writeHeaderFrame(responseHeaders, connection.outputStream, streamId);
-            connection.outputStream.flush();
         } finally {      
             headersSent = true;
             connection.unlock();
@@ -219,6 +211,7 @@ public class HTTP2Stream {
         private final OutputStream outputStream = connection.outputStream;
         private final int max_frame_size;
         private boolean closed;
+        private long pauses = 0;
 
         public Http2OutputStream(int streamId) {
             this.streamId = streamId;
@@ -240,7 +233,7 @@ public class HTTP2Stream {
         public void write(byte[] b, int off, int len) throws IOException {
             // test outside of lock so other streams can progress
             while(sendWindow.get()<=0 && !connection.isClosed()) {
-                logger.log(Level.TRACE,() -> "sending stream window exhausted, pausing on stream "+streamId);
+                pauses++;
                 LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
             }
             connection.lock();
@@ -251,12 +244,17 @@ public class HTTP2Stream {
                 while(len>0) {
                     int _len = Math.min(Math.min(len,max_frame_size),(int)Math.min(connection.sendWindow.get(),sendWindow.get()));
                     if(_len<=0) {
-                        logger.log(Level.TRACE,() -> "sending connection window exhausted, pausing on stream "+streamId);
-                        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
-                        if(connection.isClosed()) {
-                            throw new IOException("connection closed");
+                        try {
+                            connection.unlock();
+                            pauses++;
+                            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(16));
+                            if(connection.isClosed()) {
+                                throw new IOException("connection closed");
+                            }
+                            continue;
+                        } finally {
+                            connection.lock();
                         }
-                        continue;
                     }
                     FrameHeader header = new FrameHeader(_len, FrameType.DATA, EnumSet.noneOf(FrameFlag.class), streamId);
                     logger.log(Level.TRACE,() -> "sending data frame length "+_len+" on stream "+streamId);
@@ -265,7 +263,9 @@ public class HTTP2Stream {
                     off+=_len;
                     len-=_len;
                     connection.sendWindow.addAndGet(-_len);
-                    sendWindow.addAndGet(-_len);
+                    if(sendWindow.addAndGet(-_len)<=0) {
+                        outputStream.flush();
+                    }
                 }
             } finally {
                 connection.unlock();
@@ -283,6 +283,8 @@ public class HTTP2Stream {
         @Override
         public void close() throws IOException {
             if(closed) return;
+            if(pauses>0)
+                logger.log(Level.TRACE,() -> "sending stream window exhausted "+pauses+" on stream "+streamId);
             connection.lock();
             try {
                 if(connection.isClosed()) {
@@ -294,7 +296,11 @@ public class HTTP2Stream {
                 if (!headersSent) {
                     writeResponseHeaders();
                 }
-                outputStream.flush();
+                FrameHeader header = new FrameHeader(0, FrameType.DATA, EnumSet.of(FrameFlag.END_STREAM), streamId);
+                header.writeTo(connection.outputStream);
+                if(ServerConfig.http2DisableFlushDelay() || connection.requestsInProgress.decrementAndGet()==0) {
+                    connection.outputStream.flush();
+                }
             } finally {
                 closed=true;
                 connection.unlock();
@@ -303,6 +309,7 @@ public class HTTP2Stream {
         }
     }
 
+    // custom Pipe implementation since JDK version still uses synchronized methods which are not optimal for virtual threads
     private static class Pipe {
         private final CustomPipedInputStream inputStream;
         private final CustomPipedOutputStream outputStream;
