@@ -174,3 +174,5 @@ Use `-Drobaho.net.httpserver.http2OverSSL` to enable Http2 only via SSL connecti
 Use `-Drobaho.net.httpserver.http2OverNonSSL` to enable Http2 on Non-SSL connections (which requires prior knowledge). The Http2 upgrade mechanism was deprecated in RFC 9113 so it is not supported.
 
 See the additional Http2 options in `ServerConfig.java`
+
+The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
