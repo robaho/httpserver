@@ -10,6 +10,7 @@ import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
 
 import java.util.List;
+import java.util.Map;
 
 import com.sun.net.httpserver.Headers;
 
@@ -116,8 +117,6 @@ public class HPackContext {
         var pair = decodeUnsignedInteger(buffer, index, 5);
         int size = pair.value;
         index = pair.index;
-
-        System.out.println("updating dynamic table size to "+size);
 
         if (size > 4096) { // Assuming 4096 is the maximum size for the dynamic table
             throw new HTTP2Exception(HTTP2ErrorCode.COMPRESSION_ERROR, "Dynamic table size update too large: " + size);
@@ -233,18 +232,27 @@ public class HPackContext {
     }
 
     private static byte[] encodeHeader(String name, String value) {
-        byte[] nameBytes = name.getBytes();
-        byte[] valueBytes = value.getBytes();
+        if(":status".equals(name)) {
+            byte[] result = RFC7541Parser.STATUSES.get(value);
+            if(result!=null) return result;
+        }
+        var index = RFC7541Parser.getIndex(name);
+
         byte[] buffer = new byte[1];
         buffer[0]=0x00; // Literal Header Field without Indexing
 
-        // Encode header name
-        byte[] header = encodeString(nameBytes);
-        buffer = Arrays.copyOf(buffer, buffer.length + header.length);
-        System.arraycopy(header, 0, buffer, buffer.length - header.length, header.length);
+        if(index!=null) {
+            buffer = encodeIndexedField(index,4);
+        } else {
+            byte[] nameBytes = name.getBytes();
+            byte[] header = encodeString(nameBytes);
+            buffer = Arrays.copyOf(buffer, buffer.length + header.length);
+            System.arraycopy(header, 0, buffer, buffer.length - header.length, header.length);
+        }
 
         // Encode header value
-        header = encodeString(valueBytes);
+        byte[] valueBytes = value.getBytes();
+        byte[] header = encodeString(valueBytes);
         buffer = Arrays.copyOf(buffer, buffer.length + header.length);
         System.arraycopy(header, 0, buffer, buffer.length - header.length, header.length);
 
@@ -267,11 +275,44 @@ public class HPackContext {
         return buffer;
     }
 
+    private static byte[] encodeIndexedField(int index, int prefixBits) {
+        byte[] buffer = new byte[1];
+        int mask = (1 << prefixBits) - 1;
+        if (index < mask) {
+            buffer[0] = (byte) index;
+            return buffer;
+        }
+        buffer[0] = (byte) mask;
+        index -= mask;
+        while (index >= 128) {
+            buffer = Arrays.copyOf(buffer, buffer.length + 1);
+            buffer[buffer.length - 1] = (byte) ((index & 0x7F) | 0x80);
+            index >>>= 7;
+        }
+        buffer = Arrays.copyOf(buffer, buffer.length + 1);
+        buffer[buffer.length - 1] = (byte) index;
+        return buffer;
+    }
+
 }
 
 class RFC7541Parser {
 
     private static final HTTP2HeaderField[] STATIC_HEADER_TABLE = new HTTP2HeaderField[62];
+    static final Map<String,byte[]> STATUSES = Map.of(
+        "200",indexedField(8),
+        "204",indexedField(9),
+        "206",indexedField(10),
+        "304",indexedField(11),
+        "400",indexedField(12),
+        "404",indexedField(13),
+        "500",indexedField(13));
+
+    private static byte[] indexedField(int index) {
+        byte[] buffer = new byte[1];
+        buffer[0] = (byte) (0x80 | index);
+        return buffer;
+    }
 
     static {
         STATIC_HEADER_TABLE[1] = new HTTP2HeaderField(":authority", null);
@@ -335,6 +376,18 @@ class RFC7541Parser {
         STATIC_HEADER_TABLE[59] = new HTTP2HeaderField("vary", null);
         STATIC_HEADER_TABLE[60] = new HTTP2HeaderField("via", null);
         STATIC_HEADER_TABLE[61] = new HTTP2HeaderField("www-authenticate", null);
+    }
+
+    private static final Map<String, Integer> STATIC_HEADER_NAME_TO_INDEX = Arrays.stream(STATIC_HEADER_TABLE)
+        .filter(f -> f != null)
+        .collect(java.util.stream.Collectors.toMap(
+            f -> f.name,
+            f -> Arrays.asList(STATIC_HEADER_TABLE).indexOf(f),
+            (a, b) -> a
+        ));
+
+    public static Integer getIndex(String name) {
+        return STATIC_HEADER_NAME_TO_INDEX.get(name);
     }
 
     public static HTTP2HeaderField getHeaderField(int index) {
