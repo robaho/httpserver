@@ -169,9 +169,11 @@ The counts can be reset using `/__stats?reset`. The `requests/sec` is calculated
 ```
 ## enable Http2
 
-Use `-Drobaho.net.httpserver.http2OverSSL` to enable Http2 only via SSL connections.
+Http2 support is enabled via Java system properties.
 
-Use `-Drobaho.net.httpserver.http2OverNonSSL` to enable Http2 on Non-SSL connections (which requires prior knowledge). The Http2 upgrade mechanism was deprecated in RFC 9113 so it is not supported.
+Use `-Drobaho.net.httpserver.http2OverSSL=true` to enable Http2 only via SSL connections.
+
+Use `-Drobaho.net.httpserver.http2OverNonSSL=true` to enable Http2 on Non-SSL connections (which requires prior knowledge). The Http2 upgrade mechanism was deprecated in RFC 9113 so it is not supported.
 
 See the additional Http2 options in `ServerConfig.java`
 
