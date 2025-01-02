@@ -51,6 +51,9 @@ The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-
 <sup>1</sup>_The robaho version has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
 <sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor._
 
+<details>
+    <summary>performance details</summary>
+
 **robaho tech empower**
 ```
 robertengels@macmini go-wrk % wrk -H 'Host: imac' -H 'Accept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7' -H 'Connection: keep-alive' --latency -d 60 -c 64 --timeout 8 -t 2 http://imac:8080/plaintext -s ~/pipeline.lua -- 16
@@ -136,6 +139,7 @@ Number of Errors:	0
 stddev:			174.373ms
 
 ```
+</details>
 
 ## server statistics
 
@@ -164,7 +168,7 @@ The counts can be reset using `/__stats?reset`. The `requests/sec` is calculated
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.13</version>
+  <version>1.0.14</version>
 </dependency>
 ```
 ## enable Http2
