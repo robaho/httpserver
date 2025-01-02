@@ -19,6 +19,7 @@ public class OpenAddressMap {
     private int capacity;
     private int mask;
     private int size;
+    private int used;
     private Entry[] entries;
 
     public OpenAddressMap(int capacity) {
@@ -37,6 +38,10 @@ public class OpenAddressMap {
     }
 
     public Object put(String key, Object value) {
+        if(used>=capacity/2) {
+            resize();
+        }
+
         int index = key.hashCode() & mask;
         int start = index;
         int sentinel = -1;
@@ -61,6 +66,7 @@ public class OpenAddressMap {
         }
         entries[sentinel==-1 ? index : sentinel] = new Entry(key, value);
         size++;
+        used++;
         return null;
     }
 
@@ -74,6 +80,8 @@ public class OpenAddressMap {
         this.entries = newMap.entries;
         this.capacity = newMap.capacity;
         this.mask = newMap.mask;
+        this.size = newMap.size;
+        this.used = newMap.used;
     }
 
     public Object get(String key) {
@@ -98,6 +106,8 @@ public class OpenAddressMap {
 
     public void clear() {
         Arrays.fill(entries, null);
+        size=0;
+        used=0;
     }
 
     public void forEach(BiConsumer<String,Object> action) {

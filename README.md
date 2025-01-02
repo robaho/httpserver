@@ -51,7 +51,7 @@ The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-
 <sup>1</sup>_The robaho version has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
 <sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor._
 
-Performance tests against the latest Jetty version were run. The `robaho httpserver` outperformed the Jetty http2 by 2x, and the Jettty http1 by 5x.
+Performance tests against the latest Jetty version were run. The `robaho httpserver` outperformed the Jetty http2 by 5x in both http1 and http2.
 
 The Javalin/Jetty project is available [here](https://github.com/robaho/javalin-http2-example)
 
@@ -191,15 +191,15 @@ robaho http2
 starting benchmark...
 spawning thread #0: 16 total client(s). 1000000 total requests
 Application protocol: h2c
-finished in 2.23s, 447442.51 req/s, 18.78MB/s
+finished in 1.08s, 927732.43 req/s, 38.93MB/s
 requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
 status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
 traffic: 41.96MB (44000480) total, 5.72MB (6000000) headers (space savings 76.92%), 10.49MB (11000000) data
                      min         max         mean         sd        +/- sd
-time for request:      472us     58.44ms     15.98ms     11.02ms    57.96%
-time for connect:      169us      8.97ms      4.02ms      2.65ms    68.75%
-time to 1st byte:     9.62ms     22.92ms     12.11ms      4.22ms    87.50%
-req/s           :   27969.77    28457.89    28079.91      147.96    81.25%
+time for request:      226us     84.23ms     15.51ms      9.23ms    77.11%
+time for connect:      521us      5.57ms      3.13ms      1.57ms    62.50%
+time to 1st byte:     6.46ms     17.15ms     10.12ms      3.82ms    81.25%
+req/s           :   58012.46    66943.10    60509.05     2819.65    87.50%
 ```
 
 robaho http1
@@ -267,6 +267,6 @@ The http2 implementation passes all specification tests in [h2spec](https://gith
 
 Http2 performance has not been fully optimized - there is room for improvement.
 
-The http2 version is almost 3x slower than the http1 version. I expect this to be the case with most http2 implementations due to the complexity.
+The http2 version is about 20% slower than http1. I expect this to be the case with most http2 implementations due to the complexity.
 
 

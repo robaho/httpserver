@@ -118,6 +118,8 @@ public class OpenAddressIntMap<T> {
 
     public void clear() {
         Arrays.fill(entries, null);
+        size=0;
+        used=0;
     }
 
     public Iterable<T> values() {
