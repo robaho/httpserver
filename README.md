@@ -51,8 +51,12 @@ The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-
 <sup>1</sup>_The robaho version has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
 <sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor._
 
+Performance tests against the latest Jetty version were run. The `robaho httpserver` outperformed the Jetty http2 by 2x, and the Jettty http1 by 5x.
+
+The Javalin/Jetty project is available [here](https://github.com/robaho/javalin-http2-example)
+
 <details>
-    <summary>performance details</summary>
+    <summary>vs JDK performance details</summary>
 
 **robaho tech empower**
 ```
@@ -140,6 +144,82 @@ stddev:			174.373ms
 
 ```
 </details>
+<details>
+    <summary>vs Jetty performance details</summary>
+
+The server is an iMac 4ghz quad-core i7 running OSX 13.7.2. JVM used is JDK 23.0.1. The `h2load` client was connected via a 20Gbs lightening network from an M1 Mac Mini.
+
+Using `h2load -n 1000000 -m 1000 -c 16 [--h1] http://imac:<port>` 
+
+Jetty jetty-11.0.24
+Javalin version 6.4.0
+
+Jetty 11 http2
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: h2c
+finished in 5.20s, 192421.22 req/s, 6.79MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 35.29MB (37003264) total, 7.63MB (8002384) headers (space savings 90.12%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:      142us     43.73ms      7.20ms      3.96ms    70.90%
+time for connect:      176us      7.70ms      3.96ms      2.34ms    62.50%
+time to 1st byte:    10.48ms     20.63ms     13.65ms      2.93ms    75.00%
+req/s           :   12026.57    12200.62    12070.81       46.69    93.75%
+```
+
+Jetty 11 http1
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: http/1.1
+finished in 3.86s, 258839.63 req/s, 33.82MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 130.65MB (137000000) total, 86.78MB (91000000) headers (space savings 0.00%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:     1.52ms    194.72ms     60.42ms     21.40ms    74.16%
+time for connect:      172us      4.07ms      2.13ms      1.21ms    62.50%
+time to 1st byte:     4.70ms     10.80ms      6.66ms      1.96ms    87.50%
+req/s           :   16178.98    16976.90    16456.91      175.54    81.25%
+```
+
+robaho http2
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: h2c
+finished in 2.23s, 447442.51 req/s, 18.78MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 41.96MB (44000480) total, 5.72MB (6000000) headers (space savings 76.92%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:      472us     58.44ms     15.98ms     11.02ms    57.96%
+time for connect:      169us      8.97ms      4.02ms      2.65ms    68.75%
+time to 1st byte:     9.62ms     22.92ms     12.11ms      4.22ms    87.50%
+req/s           :   27969.77    28457.89    28079.91      147.96    81.25%
+```
+
+robaho http1
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: http/1.1
+finished in 784.26ms, 1275080.84 req/s, 105.79MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1001125 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 82.97MB (87000000) total, 46.73MB (49000000) headers (space savings 0.00%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:      763us     26.87ms     12.34ms      2.71ms    74.28%
+time for connect:      104us      4.32ms      2.23ms      1.30ms    62.50%
+time to 1st byte:     4.91ms     16.21ms     10.36ms      4.49ms    43.75%
+req/s           :   79744.46    81149.46    80228.21      355.56    75.00%
+```
+
+</details>
+
 
 ## server statistics
 
@@ -183,83 +263,10 @@ See the additional Http2 options in `ServerConfig.java`
 
 The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
 
-## Http2 performance
+## Http2 performance notes
 
-Http2 performance has not yet been optimized, but an unscientific test shows the http2 implementation to have greater than 2x better throughput than the Javalin/Jetty 11 version.
+Http2 performance has not fully optimized - there is room for improvement.
 
-Still, the http2 version is almost 3x slower than the http1 version. I expect this to be the case with most http2 implementations.
+The http2 version is almost 3x slower than the http1 version. I expect this to be the case with most http2 implementations due to the complexity.
 
-The Javalin/Jetty project is available [here](https://github.com/robaho/javalin-http2-example)
 
-<details>
-    <summary>performance details</summary>
-
-All tests were run on the same hardware with the same JDK23 version.
-
-Using `h2load -n 1000000 -m 1000 -c 16 [--h1] http://localhost:<port>` 
-
-Jetty 11 http2
-```
-starting benchmark...
-spawning thread #0: 16 total client(s). 1000000 total requests
-Application protocol: h2c
-finished in 5.25s, 190298.69 req/s, 6.72MB/s
-requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
-status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
-traffic: 35.29MB (37003264) total, 7.63MB (8002384) headers (space savings 90.12%), 10.49MB (11000000) data
-                     min         max         mean         sd        +/- sd
-time for request:      160us     52.24ms      7.76ms      3.94ms    67.73%
-time for connect:      235us      8.82ms      4.73ms      2.68ms    62.50%
-time to 1st byte:    11.16ms     33.62ms     20.95ms      9.28ms    50.00%
-req/s           :   11894.25    12051.63    11957.08       58.94    56.25%
-```
-
-Jetty 11 http1
-```
-starting benchmark...
-spawning thread #0: 16 total client(s). 1000000 total requests
-Application protocol: http/1.1
-finished in 3.67s, 272138.02 req/s, 35.56MB/s
-requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
-status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
-traffic: 130.65MB (137000000) total, 86.78MB (91000000) headers (space savings 0.00%), 10.49MB (11000000) data
-                     min         max         mean         sd        +/- sd
-time for request:      831us    189.78ms     57.30ms     21.98ms    71.20%
-time for connect:      152us      4.21ms      2.19ms      1.24ms    62.50%
-time to 1st byte:     4.85ms     11.73ms      7.11ms      2.29ms    81.25%
-req/s           :   17010.42    17843.23    17334.96      260.43    50.00%
-```
-
-robaho http2
-```
-starting benchmark...
-spawning thread #0: 16 total client(s). 1000000 total requests
-Application protocol: h2c
-finished in 2.20s, 453632.21 req/s, 19.04MB/s
-requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
-status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
-traffic: 41.96MB (44000480) total, 5.72MB (6000000) headers (space savings 76.92%), 10.49MB (11000000) data
-                     min         max         mean         sd        +/- sd
-time for request:      347us     51.17ms     16.98ms     10.52ms    59.21%
-time for connect:      228us      8.77ms      4.02ms      2.44ms    62.50%
-time to 1st byte:     9.46ms     22.61ms     12.61ms      4.81ms    81.25%
-req/s           :   28353.29    29288.55    28542.35      229.27    87.50%
-```
-
-robaho http1
-```
-starting benchmark...
-spawning thread #0: 16 total client(s). 1000000 total requests
-Application protocol: http/1.1
-finished in 802.36ms, 1246317.13 req/s, 103.41MB/s
-requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
-status codes: 1001066 2xx, 0 3xx, 0 4xx, 0 5xx
-traffic: 82.97MB (87000000) total, 46.73MB (49000000) headers (space savings 0.00%), 10.49MB (11000000) data
-                     min         max         mean         sd        +/- sd
-time for request:      860us     35.46ms     12.61ms      3.33ms    75.21%
-time for connect:       92us      4.06ms      2.06ms      1.21ms    62.50%
-time to 1st byte:     4.68ms     18.67ms     10.85ms      4.88ms    50.00%
-req/s           :   77913.01    80438.10    78458.60      721.68    81.25%
-```
-
-</details>
