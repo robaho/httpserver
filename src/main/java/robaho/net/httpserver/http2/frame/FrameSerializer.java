@@ -2,6 +2,7 @@ package robaho.net.httpserver.http2.frame;
 
 import java.io.InputStream;
 
+import robaho.net.httpserver.ServerConfig;
 import robaho.net.httpserver.http2.HTTP2Connection;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -10,18 +11,18 @@ public class FrameSerializer {
 
 	public static BaseFrame deserialize(InputStream inputStream) throws Exception {
 
-		BaseFrame baseFrame = null;
-		byte[] tmpBuffer = new byte[9];
+		BaseFrame baseFrame;
 
+		byte[] tmpBuffer = new byte[9];
         HTTP2Connection.readFully(inputStream, tmpBuffer);
 		FrameHeader frameHeader = FrameHeader.Parse(tmpBuffer);
 
-        byte[] body = new byte[frameHeader.getLength()];
-        HTTP2Connection.readFully(inputStream, body);
-
-        if(frameHeader.getLength() > 16384) {
+        if(frameHeader.getLength() > ServerConfig.http2MaxFrameSize()) {
             throw new HTTP2Exception(HTTP2ErrorCode.FRAME_SIZE_ERROR);
         }
+
+        byte[] body = new byte[frameHeader.getLength()];
+        HTTP2Connection.readFully(inputStream, body);
 
 		switch (frameHeader.getType()) {
 		case HEADERS:

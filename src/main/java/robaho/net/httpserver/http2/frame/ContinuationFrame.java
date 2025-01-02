@@ -2,8 +2,10 @@ package robaho.net.httpserver.http2.frame;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
 
 import robaho.net.httpserver.http2.HTTP2Exception;
+import robaho.net.httpserver.http2.Utils;
 
 public class ContinuationFrame extends BaseFrame {
     private final byte[] body;
@@ -23,6 +25,10 @@ public class ContinuationFrame extends BaseFrame {
     }
     public byte[] getHeaderBlock() {
         return body;
+    }
+    
+    public byte[] encode() {
+        return Utils.combineByteArrays(List.of(getHeader().encode(),body));
     }
 
 }

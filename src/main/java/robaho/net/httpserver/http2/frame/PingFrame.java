@@ -2,9 +2,12 @@ package robaho.net.httpserver.http2.frame;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.EnumSet;
+import java.util.List;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
+import robaho.net.httpserver.http2.Utils;
 
 public class PingFrame extends BaseFrame {
     public final byte[] body;
@@ -13,6 +16,14 @@ public class PingFrame extends BaseFrame {
 		super(header);
         this.body = body;
 	}
+    public PingFrame() {
+        super(new FrameHeader(8,FrameType.PING,FrameFlag.NONE,0));
+        body = new byte[8];
+    }
+    public PingFrame(PingFrame toBeAcked) {
+        super(new FrameHeader(toBeAcked.body.length,FrameType.PING,EnumSet.of(FrameFlag.ACK),0));
+        body = toBeAcked.body;
+    }
 
     @Override
     public void writeTo(OutputStream os) throws IOException {
@@ -27,5 +38,8 @@ public class PingFrame extends BaseFrame {
             throw new HTTP2Exception(HTTP2ErrorCode.FRAME_SIZE_ERROR);
         }
         return new PingFrame(frameHeader, body);
+    }
+    public byte[] encode() {
+        return Utils.combineByteArrays(List.of(getHeader().encode(),body));
     }
 }

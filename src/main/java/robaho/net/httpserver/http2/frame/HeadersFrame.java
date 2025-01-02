@@ -25,7 +25,7 @@ public class HeadersFrame extends BaseFrame {
 	private byte[] padding;
 
 	public HeadersFrame() {
-		this(new FrameHeader(0, FrameType.HEADERS, EnumSet.noneOf(FrameFlag.class), 0));
+		this(new FrameHeader(0, FrameType.HEADERS, FrameFlag.NONE, 0));
 	}
 
 	public HeadersFrame(FrameHeader header) {
@@ -164,9 +164,12 @@ public class HeadersFrame extends BaseFrame {
 
     @Override
     public void writeTo(OutputStream os) throws IOException {
-        FrameHeader header = new FrameHeader(getHeaderBlock().length, FrameType.HEADERS, EnumSet.of(FrameFlag.END_HEADERS), getHeader().getStreamIdentifier());
-        header.writeTo(os);
-        os.write(getHeaderBlock());
+        byte[] buffer = getHeaderBlock();
+        FrameHeader.writeTo(os, buffer.length, FrameType.HEADERS, EnumSet.of(FrameFlag.END_HEADERS), getHeader().getStreamIdentifier());
+        os.write(buffer);
         os.flush();
+    }
+    public byte[] encode() {
+        throw new UnsupportedOperationException("use HPackContext encodeFrameHeaders()");
     }
 }

@@ -8,6 +8,7 @@ import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
 
 public class DataFrame extends BaseFrame {
+
     public final byte[] body;
 	public DataFrame(FrameHeader header,byte[] body) {
 		super(header);
@@ -31,5 +32,8 @@ public class DataFrame extends BaseFrame {
         } else {
             return new DataFrame(frameHeader, body);
         }
+    }
+    public byte[] encode() {
+        throw new UnsupportedOperationException();
     }
 }

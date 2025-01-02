@@ -2,6 +2,7 @@ package robaho.net.httpserver.http2;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Deque;
 import java.util.List;
 
 public class Utils {
@@ -47,8 +48,8 @@ public class Utils {
 	}
 
 	public static void convertToBinary(byte[] buffer, int pos, int input, int length) {
-		for (int i = pos; i < pos + length; i++) {
-			buffer[i] = (byte) ((input >> (8 * i)) & 255);
+		for (int i = 0; i < length; i++) {
+			buffer[i+pos] = (byte) ((input >> (8 * (length-1-i))) & 255);
 		}
 	}
 
@@ -61,8 +62,10 @@ public class Utils {
 			os.write((byte) ((input >> (8 * i)) & 0xFF));
 		}
     }
+    private static final byte[] EMPTY = new byte[0];
 
     public static byte[] combineByteArrays(List<byte[]> blocks) {
+        if(blocks.isEmpty()) return EMPTY;
         if(blocks.size()==1) return blocks.get(0);
 
         int totalLength = 0;

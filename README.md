@@ -181,20 +181,20 @@ The http2 implementation passes all specification tests in [h2spec](https://gith
 
 ## Http2 performance
 
-Http2 performance has not yet been optimized, but an unscientific test shows the http2 implementation to have greater than 50% better throughput than the Javalin/Jetty 11 version.
+Http2 performance has not yet been optimized, but an unscientific test shows the http2 implementation to have greater than 2x better throughput than the Javalin/Jetty 11 version.
+
+Still, the http2 version is almost 3x slower than the http1 version. I expect this to be the case with most http2 implementations.
 
 The Javalin/Jetty project is available [here](https://github.com/robaho/javalin-http2-example)
-
-TODO: outbound headers are only minimally compressed/indexed.
 
 <details>
     <summary>performance details</summary>
 
 All tests were run on the same hardware with the same JDK23 version.
 
-Using `h2load -n 1000000 -m 1000 -c 16 http://localhost:<port>`
+Using `h2load -n 1000000 -m 1000 -c 16 [--h1] http://localhost:<port>` 
 
-Jetty 11
+Jetty 11 http2
 ```
 starting benchmark...
 spawning thread #0: 16 total client(s). 1000000 total requests
@@ -210,20 +210,52 @@ time to 1st byte:    11.16ms     33.62ms     20.95ms      9.28ms    50.00%
 req/s           :   11894.25    12051.63    11957.08       58.94    56.25%
 ```
 
+Jetty 11 http1
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: http/1.1
+finished in 3.67s, 272138.02 req/s, 35.56MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 130.65MB (137000000) total, 86.78MB (91000000) headers (space savings 0.00%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:      831us    189.78ms     57.30ms     21.98ms    71.20%
+time for connect:      152us      4.21ms      2.19ms      1.24ms    62.50%
+time to 1st byte:     4.85ms     11.73ms      7.11ms      2.29ms    81.25%
+req/s           :   17010.42    17843.23    17334.96      260.43    50.00%
+```
+
 robaho http2
 ```
 starting benchmark...
 spawning thread #0: 16 total client(s). 1000000 total requests
 Application protocol: h2c
-finished in 2.97s, 336884.32 req/s, 14.14MB/s
+finished in 2.20s, 453632.21 req/s, 19.04MB/s
 requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
 status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
 traffic: 41.96MB (44000480) total, 5.72MB (6000000) headers (space savings 76.92%), 10.49MB (11000000) data
                      min         max         mean         sd        +/- sd
-time for request:      406us     83.67ms     25.15ms     13.16ms    67.28%
-time for connect:      188us     11.70ms      5.99ms      3.69ms    56.25%
-time to 1st byte:    14.13ms     31.81ms     22.80ms      6.61ms    43.75%
-req/s           :   21059.44    21271.63    21141.16       75.01    68.75%
+time for request:      347us     51.17ms     16.98ms     10.52ms    59.21%
+time for connect:      228us      8.77ms      4.02ms      2.44ms    62.50%
+time to 1st byte:     9.46ms     22.61ms     12.61ms      4.81ms    81.25%
+req/s           :   28353.29    29288.55    28542.35      229.27    87.50%
+```
+
+robaho http1
+```
+starting benchmark...
+spawning thread #0: 16 total client(s). 1000000 total requests
+Application protocol: http/1.1
+finished in 802.36ms, 1246317.13 req/s, 103.41MB/s
+requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
+status codes: 1001066 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 82.97MB (87000000) total, 46.73MB (49000000) headers (space savings 0.00%), 10.49MB (11000000) data
+                     min         max         mean         sd        +/- sd
+time for request:      860us     35.46ms     12.61ms      3.33ms    75.21%
+time for connect:       92us      4.06ms      2.06ms      1.21ms    62.50%
+time to 1st byte:     4.68ms     18.67ms     10.85ms      4.88ms    50.00%
+req/s           :   77913.01    80438.10    78458.60      721.68    81.25%
 ```
 
 </details>

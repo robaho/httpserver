@@ -8,6 +8,7 @@ import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 import java.util.EnumSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -17,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.sun.net.httpserver.Headers;
 
 import robaho.net.httpserver.NoSyncBufferedOutputStream;
-import robaho.net.httpserver.ServerConfig;
+import robaho.net.httpserver.OptimizedHeaders;
 import robaho.net.httpserver.http2.hpack.HPackContext;
 import robaho.net.httpserver.http2.frame.BaseFrame;
 import robaho.net.httpserver.http2.frame.DataFrame;
@@ -41,8 +42,8 @@ public class HTTP2Stream {
     private final Pipe pipe;
     private final HTTP2Connection.StreamHandler handler;
     private final Headers requestHeaders;
-    private final Headers responseHeaders = new Headers();
-    private volatile boolean headersSent = false;
+    private final Headers responseHeaders = new OptimizedHeaders(16);
+    private final AtomicBoolean headersSent = new AtomicBoolean(false);
 
     private volatile Thread thread;
     private volatile boolean streamOpen = true;
@@ -59,8 +60,10 @@ public class HTTP2Stream {
         this.pipe = new Pipe();
         this.outputStream = new NoSyncBufferedOutputStream(new Http2OutputStream(streamId));
         var setting = connection.getRemoteSettings().get(SettingIdentifier.SETTINGS_INITIAL_WINDOW_SIZE);
-        if(setting!=null)
+        if(setting!=null) {
             sendWindow.addAndGet((int)(setting.value-65535));
+        }
+        logger.log(Level.TRACE,() -> "new stream, window size "+sendWindow.get()+" on stream "+streamId);
     }
 
     public OutputStream getOutputStream() {
@@ -91,7 +94,7 @@ public class HTTP2Stream {
         streamOpen = false;
         halfClosed = true;
 
-        if(connection.http2Streams.remove(streamId)==null) {
+        if(connection.http2Streams.put(streamId,null)==null) {
             return;
         }
 
@@ -102,6 +105,7 @@ public class HTTP2Stream {
                 thread.interrupt();
         } catch (IOException e) {
             if(!connection.isClosed()) {
+                connection.close();
                 logger.log(connection.httpConnection.requestCount.get()>0 ? Level.WARNING : Level.DEBUG,"IOException closing http2 stream",e);
             }
         } finally {
@@ -186,15 +190,12 @@ public class HTTP2Stream {
         });
     }
     public void writeResponseHeaders() throws IOException {
-        if(headersSent) return;
+        if(!headersSent.compareAndSet(false,true))
+            return;
         connection.lock();
         try {
-            if (headersSent) {
-                return;
-            }
-            HPackContext.writeHeaderFrame(responseHeaders, connection.outputStream, streamId);
-        } finally {      
-            headersSent = true;
+            HPackContext.writeHeaderFrame(responseHeaders,connection.outputStream,streamId);
+        } finally {
             connection.unlock();
         }
     }
@@ -207,8 +208,9 @@ public class HTTP2Stream {
     }
 
     class Http2OutputStream extends OutputStream {
+        private static final EnumSet<FrameFlag> END_STREAM = EnumSet.of(FrameFlag.END_STREAM);
+
         private final int streamId;
-        private final OutputStream outputStream = connection.outputStream;
         private final int max_frame_size;
         private boolean closed;
         private long pauses = 0;
@@ -236,74 +238,75 @@ public class HTTP2Stream {
                 pauses++;
                 LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
             }
-            connection.lock();
-            try {
-                if (!headersSent) {
-                    writeResponseHeaders();
-                }
-                while(len>0) {
-                    int _len = Math.min(Math.min(len,max_frame_size),(int)Math.min(connection.sendWindow.get(),sendWindow.get()));
-                    if(_len<=0) {
-                        try {
-                            connection.unlock();
-                            pauses++;
-                            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(16));
-                            if(connection.isClosed()) {
-                                throw new IOException("connection closed");
-                            }
-                            continue;
-                        } finally {
-                            connection.lock();
-                        }
+            writeResponseHeaders();
+            while(len>0) {
+                int _len = Math.min(Math.min(len,max_frame_size),(int)Math.min(connection.sendWindow.get(),sendWindow.get()));
+                if(_len<=0) {
+                    pauses++;
+                    connection.lock();
+                    try {
+                        connection.outputStream.flush();
+                    } finally {
+                        connection.unlock();
                     }
-                    FrameHeader header = new FrameHeader(_len, FrameType.DATA, EnumSet.noneOf(FrameFlag.class), streamId);
-                    logger.log(Level.TRACE,() -> "sending data frame length "+_len+" on stream "+streamId);
-                    header.writeTo(outputStream);
-                    outputStream.write(b, off, _len);
-                    off+=_len;
-                    len-=_len;
-                    connection.sendWindow.addAndGet(-_len);
-                    if(sendWindow.addAndGet(-_len)<=0) {
-                        outputStream.flush();
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+                    if(connection.isClosed()) {
+                        throw new IOException("connection closed");
                     }
+                    int remaining = len;
+                    // logger.log(Level.TRACE,() -> "paused sending data frame, remaining "+remaining+", length "+_len+" on stream "+streamId);
+                    continue;
                 }
-            } finally {
-                connection.unlock();
+                if(connection.sendWindow.addAndGet(-_len)<0) {
+                    // if we can't get the space from the connection window, need to retry
+                    connection.sendWindow.addAndGet(_len);
+                    continue;
+                }
+                connection.lock();
+                try {
+                    FrameHeader.writeTo(connection.outputStream, _len, FrameType.DATA, FrameFlag.NONE, streamId);
+                    connection.outputStream.write(b,off,_len);
+                } finally {
+                    connection.unlock();
+                }
+                // byte[] header = FrameHeader.encode(_len, FrameType.DATA, FrameFlag.NONE, streamId);
+                // byte[] data = Arrays.copyOfRange(b,off, len);
+                // connection.enqueue(List.of(header,data));
+                off+=_len;
+                len-=_len;
+                sendWindow.addAndGet(-_len);
+                logger.log(Level.TRACE,() -> "sent data frame, length "+_len+", new send window "+sendWindow.get()+" on stream "+streamId);
             }
         }
         @Override
         public void flush() throws IOException {
-            connection.lock();
-            try {
-                outputStream.flush();
-            } finally {
-                connection.unlock();
-            }
         }
         @Override
         public void close() throws IOException {
             if(closed) return;
             if(pauses>0)
-                logger.log(Level.TRACE,() -> "sending stream window exhausted "+pauses+" on stream "+streamId);
-            connection.lock();
+                logger.log(Level.INFO,() -> "sending stream window exhausted "+pauses+" on stream "+streamId);
             try {
                 if(connection.isClosed()) {
-                    if(!headersSent) {
+                    if(!headersSent.get()) {
                         logger.log(Level.WARNING,"stream connection is closed and headers not sent on stream "+streamId);
                     }
                     return;
                 }
-                if (!headersSent) {
-                    writeResponseHeaders();
+                connection.requestsInProgress.decrementAndGet();
+                writeResponseHeaders();
+                connection.lock();
+                try {
+                    FrameHeader.writeTo(connection.outputStream, 0, FrameType.DATA, END_STREAM, streamId);
+                    if(connection.requestsInProgress.get()<=0) {
+                        connection.outputStream.flush();
+                    }
+                } finally {
+                    connection.unlock();
                 }
-                FrameHeader header = new FrameHeader(0, FrameType.DATA, EnumSet.of(FrameFlag.END_STREAM), streamId);
-                header.writeTo(connection.outputStream);
-                if(ServerConfig.http2DisableFlushDelay() || connection.requestsInProgress.decrementAndGet()==0) {
-                    connection.outputStream.flush();
-                }
+                // connection.enqueue(header);
             } finally {
                 closed=true;
-                connection.unlock();
                 HTTP2Stream.this.close();
             }
         }

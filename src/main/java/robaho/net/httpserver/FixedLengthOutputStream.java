@@ -44,7 +44,7 @@ class FixedLengthOutputStream extends FilterOutputStream {
     FixedLengthOutputStream(ExchangeImpl t, OutputStream src, long len) {
         super(src);
         if (len < 0) {
-            throw new IllegalArgumentException("Content-Length: " + len);
+            throw new IllegalArgumentException("Content-length: " + len);
         }
         this.t = t;
         this.remaining = len;

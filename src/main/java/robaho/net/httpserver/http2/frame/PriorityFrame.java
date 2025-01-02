@@ -2,6 +2,7 @@ package robaho.net.httpserver.http2.frame;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -36,4 +37,10 @@ public class PriorityFrame extends BaseFrame {
         return frame;
     }
 
+    public byte[] encode() {
+        byte[] buffer = new byte[5];
+        Utils.convertToBinary(buffer, 0, streamDependency);
+        buffer[4] = (byte)((weight-1) & 0xFF);
+        return Utils.combineByteArrays(List.of(getHeader().encode(),buffer));
+    }
 }

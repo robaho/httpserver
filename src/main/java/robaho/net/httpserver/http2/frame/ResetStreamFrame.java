@@ -2,6 +2,8 @@ package robaho.net.httpserver.http2.frame;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.EnumSet;
+import java.util.List;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -13,6 +15,10 @@ public class ResetStreamFrame extends BaseFrame {
 
 	public ResetStreamFrame(FrameHeader header,HTTP2ErrorCode errorCode) {
 		super(header);
+        this.errorCode = errorCode;
+	}
+	public ResetStreamFrame(HTTP2ErrorCode errorCode,int streamId) {
+		super(new FrameHeader(4,FrameType.RST_STREAM,FrameFlag.NONE,streamId));
         this.errorCode = errorCode;
 	}
 
@@ -29,4 +35,10 @@ public class ResetStreamFrame extends BaseFrame {
         }
         return new ResetStreamFrame(frameHeader,HTTP2ErrorCode.getEnum(convertToInt(body, 0)));
     }
+    public byte[] encode() {
+        byte[] buffer = new byte[4];
+        Utils.convertToBinary(buffer, 0, errorCode.getValue());
+        return Utils.combineByteArrays(List.of(getHeader().encode(),buffer));
+    }
+
 }

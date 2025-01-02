@@ -1,12 +1,11 @@
 package robaho.net.httpserver.http2.hpack;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
+import robaho.net.httpserver.OpenAddressMap;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
 
@@ -21,7 +20,7 @@ public class HeaderFields implements Iterable<HTTP2HeaderField> {
     private static final Set<String> pseudoHeadersIn = Set.of(":authority", ":method", ":path", ":scheme");
 
     private final List<HTTP2HeaderField> fields = new ArrayList();
-    private final Map<String,HTTP2HeaderField> pseudoHeaders = new HashMap();
+    private final OpenAddressMap pseudoHeaders = new OpenAddressMap(8);
 
     private boolean hasNonPseudoHeader = false;
 
@@ -42,7 +41,7 @@ public class HeaderFields implements Iterable<HTTP2HeaderField> {
             hasNonPseudoHeader = true;
         }
         if(field.isPseudoHeader() && hasNonPseudoHeader) {
-            throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,"Pseudo-header fields must appear before regular header fields");
+            throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,"pseudo-header fields must appear before regular header fields");
         }
         if(field.isPseudoHeader()) {
             if(pseudoHeaders.put(field.getName(),field)!=null && requiredHeaderFields.contains(field.getName())) {
@@ -73,9 +72,12 @@ public class HeaderFields implements Iterable<HTTP2HeaderField> {
     public void validate() throws HTTP2Exception {
         for(var fieldName : requiredHeaderFields) {
             var ph = pseudoHeaders.get(fieldName);
-            if(ph==null || isEmpty(ph.getValue())) {
+            if(ph==null || isEmpty(((HTTP2HeaderField)ph).getValue())) {
                 throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,"missing required header field "+fieldName);
             }
         }
+    }
+    public int size() {
+        return fields.size();
     }
 }

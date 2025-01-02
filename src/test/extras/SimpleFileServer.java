@@ -58,6 +58,8 @@ public class SimpleFileServer {
         ch.setLevel(Level.ALL);
         logger.addHandler(ch);
 
+        logger.log(Level.INFO,() -> "using Java version: " + System.getProperty("java.version"));
+
         String rootDir = args[0];
         int port = Integer.parseInt(args[1]);
         String logfile = args[2];

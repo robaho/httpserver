@@ -79,7 +79,7 @@ public class Http2ExchangeImpl extends HttpExchange {
     @Override
     public void sendResponseHeaders(int rCode, long responseLength) throws IOException {
         if(responseLength>0) {
-            response.set("Content-Length", Long.toString(responseLength));
+            response.set("Content-length", Long.toString(responseLength));
         } else if(responseLength==0) {
             // no chunked encoding so just ignore
         } else {

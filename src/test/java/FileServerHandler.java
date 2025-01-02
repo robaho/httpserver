@@ -77,7 +77,7 @@ public class FileServerHandler implements HttpHandler {
 
         String method = t.getRequestMethod();
         if (method.equals ("HEAD")) {
-            rmap.set ("Content-Length", Long.toString (f.length()));
+            rmap.set ("Content-length", Long.toString (f.length()));
             t.sendResponseHeaders (200, -1);
             t.close();
         } else if (!method.equals("GET")) {
@@ -87,9 +87,9 @@ public class FileServerHandler implements HttpHandler {
         }
 
         if (path.endsWith (".html") || path.endsWith (".htm")) {
-            rmap.set ("Content-Type", "text/html");
+            rmap.set ("Content-type", "text/html");
         } else {
-            rmap.set ("Content-Type", "text/plain");
+            rmap.set ("Content-type", "text/plain");
         }
         if (f.isDirectory()) {
             if (!path.endsWith ("/")) {

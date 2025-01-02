@@ -1,5 +1,6 @@
 package robaho.net.httpserver.http2.frame;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -67,6 +68,15 @@ public class SettingsFrame extends BaseFrame {
 		for (int i = 0; i < params.size(); i++) {
 			params.get(i).writeTo(os);
 		}
+    }
+
+    public byte[] encode() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try {
+            writeTo(bos);
+        } catch (IOException ignore) {
+        }
+        return bos.toByteArray();
     }
 
 }

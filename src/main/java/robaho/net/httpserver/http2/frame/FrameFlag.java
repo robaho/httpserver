@@ -1,6 +1,8 @@
 package robaho.net.httpserver.http2.frame;
 
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Set;
 
 import robaho.net.httpserver.http2.HTTP2Exception;
 
@@ -15,18 +17,24 @@ public enum FrameFlag {
 	PADDED((byte)0x8), 
 	PRIORITY((byte)0x20);
 
-
-	byte value;
+	private final byte value;
 
 	FrameFlag(byte value) {
 		this.value = value;
 	}
 
+    private static final FrameFlag[] _values = FrameFlag.values();
+
+    public static final Set<FrameFlag> NONE = Collections.unmodifiableSet(EnumSet.noneOf(FrameFlag.class));
+
 	public byte getValue() {
 		return value;
 	}
 
-	public static EnumSet<FrameFlag> getEnumSet(byte value, FrameType type) throws HTTP2Exception {
+	public static Set<FrameFlag> getEnumSet(byte value, FrameType type) throws HTTP2Exception {
+        if(value==0) {
+            return NONE;
+        }
 
 		// Empty EnumSet
 		EnumSet<FrameFlag> result = EnumSet.noneOf(FrameFlag.class);
@@ -49,7 +57,7 @@ public enum FrameFlag {
 		}
 
 		// For each flag in FrameFlag
-		for (FrameFlag flag : FrameFlag.values()) {
+		for (FrameFlag flag : _values) {
 			// Check whether the flag bit is set
 			if ((value & flag.value) != 0) {
 				result.add(flag);
@@ -67,7 +75,7 @@ public enum FrameFlag {
 		return result;
 	}
 	
-	public static byte getValue(EnumSet<FrameFlag> flags) {
+	public static byte getValue(Set<FrameFlag> flags) {
 
 		byte result = 0;
 
@@ -77,5 +85,4 @@ public enum FrameFlag {
 
 		return result;
 	}
-
 }

@@ -13,7 +13,7 @@ public class ContentEncoding {
      * @return the provided content encoding or the default
      */
     public static String encoding(Headers headers) {
-        List<String> values = headers.get("content-encoding");
+        List<String> values = headers.get("Content-encoding");
         if (values == null) {
             return defaultCharset;
         }

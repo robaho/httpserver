@@ -14,6 +14,10 @@ public class WindowUpdateFrame extends BaseFrame {
 	public WindowUpdateFrame(FrameHeader header) {
 		super(header);
 	}
+    public WindowUpdateFrame(int streamId,int increment) {
+        super(new FrameHeader(4,FrameType.WINDOW_UPDATE,FrameFlag.NONE,streamId));
+        windowSizeIncrement = increment;
+    }
 	
 	public int getWindowSizeIncrement()
 	{
@@ -41,5 +45,14 @@ public class WindowUpdateFrame extends BaseFrame {
     @Override
     public void writeTo(OutputStream os) throws IOException {
         getHeader().writeTo(os);
+        Utils.writeBinary(os, windowSizeIncrement);
+    }
+    
+    @Override
+    public byte[] encode() {
+        byte[] buffer = new byte[9+4];
+        getHeader().encode(buffer);
+        Utils.convertToBinary(buffer,9,windowSizeIncrement);
+        return buffer;
     }
 }

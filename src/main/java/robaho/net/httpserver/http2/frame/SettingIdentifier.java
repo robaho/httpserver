@@ -19,10 +19,12 @@ public enum SettingIdentifier {
 		return value;
 	}
 
+    static final SettingIdentifier[] _values = SettingIdentifier.values();
+
 	public static SettingIdentifier getEnum(int value) {
 		SettingIdentifier result = SettingIdentifier.SETTINGS_NONE;
 
-		for (SettingIdentifier e : SettingIdentifier.values()) {
+		for (SettingIdentifier e : _values) {
 			if (e.getValue() == value)
 				result = e;
 		}

@@ -2,9 +2,13 @@ package robaho.net.httpserver.http2.hpack;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Array;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.EnumSet;
+import java.util.LinkedList;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -18,6 +22,7 @@ import robaho.net.httpserver.http2.frame.FrameFlag;
 import robaho.net.httpserver.http2.frame.FrameHeader;
 import robaho.net.httpserver.http2.frame.FrameType;
 import robaho.net.httpserver.http2.Utils;
+import robaho.net.httpserver.http2.frame.FrameType;
 
 public class HPackContext {
     private final List<HTTP2HeaderField> dynamicTable = new ArrayList(1024);
@@ -86,7 +91,7 @@ public class HPackContext {
             throw new HTTP2Exception(HTTP2ErrorCode.COMPRESSION_ERROR, "Invalid header index " + headerIndex + ", dynamic: "+dynamicTable);
         }
 
-        headerField.setName(field.name);
+        headerField.setName(field.name,field.normalizedName);
         headerField.setValue(field.value);
 
         return index;
@@ -151,7 +156,7 @@ public class HPackContext {
             if (field == null) {
                 throw new HTTP2Exception(HTTP2ErrorCode.COMPRESSION_ERROR, "Invalid header index " + headerIndex);
             }
-            headerField.setName(field.name);
+            headerField.setName(field.name,field.normalizedName);
         }
         return index;
     }
@@ -208,27 +213,34 @@ public class HPackContext {
     }
 
     public static void writeHeaderFrame(Headers headers, OutputStream outputStream, int streamId) throws IOException {
-        byte[] buffer = encodeHeadersFrame(headers);
-        FrameHeader header = new FrameHeader(buffer.length, FrameType.HEADERS, EnumSet.of(FrameFlag.END_HEADERS), streamId);
-        header.writeTo(outputStream);
+        byte[] buffer = encodeHeaders(headers);
+        FrameHeader.writeTo(outputStream, buffer.length,FrameType.HEADERS, END_OF_HEADERS, streamId);
         outputStream.write(buffer);
-
         // System.out.println("HPACK.writeHeaderFrame: wrote header frame, length: " + buffer.length + ", streamId: " + streamId);
     }
 
-    private static byte[] encodeHeadersFrame(Headers headers) {
-        List<byte[]> fields = new ArrayList();
-        for (String name : headers.keySet()) {
-            for (String value : headers.get(name)) {
+    private static final EnumSet<FrameFlag> END_OF_HEADERS = EnumSet.of(FrameFlag.END_HEADERS);
+
+    public static List<byte[]> encodeHeadersFrame(Headers headers,int streamId) {
+        byte[] buffer = encodeHeaders(headers);
+        byte[] header = FrameHeader.encode(buffer.length, FrameType.HEADERS, END_OF_HEADERS, streamId);
+        return List.of(header,buffer);
+    }
+
+    private static byte[] encodeHeaders(Headers headers) {
+        List<byte[]> fields = new ArrayList(headers.size());
+        List<byte[]> pseudo = new ArrayList<>(6);
+        headers.forEach((name, values) -> {
+            for (String value : values) {
                 byte[] header = encodeHeader(name.toLowerCase(), value);
                 if(name.startsWith(":")) {
-                    fields.add(0, header);
+                    pseudo.add(header);
                 } else {
                     fields.add(header);
                 }
             }
-        }
-        return Utils.combineByteArrays(fields);
+        });
+        return Utils.combineByteArrays(List.of(Utils.combineByteArrays(pseudo),Utils.combineByteArrays(fields)));
     }
 
     private static byte[] encodeHeader(String name, String value) {

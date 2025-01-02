@@ -552,20 +552,15 @@ class ServerImpl {
                 throw new IOException("Invalid HTTP/2 headers: missing :authority or :path");
             }
 
-            StringBuilder uriBuilder = new StringBuilder();
-            uriBuilder.append(scheme).append("://").append(authority).append(path);
-            if (query != null) {
-                uriBuilder.append("?").append(query);
-            }
-
             request.add("Host",authority);
 
             URI uri;
             try {
-                uri = new URI(uriBuilder.toString());
-            } catch (URISyntaxException e) {
-                throw new IOException("Invalid URI syntax", e);
+                uri = new URI(scheme,authority,path,query,null);
+            } catch (URISyntaxException ex) {
+                throw new IOException("invalid uri",ex);
             }
+
             String method = request.getFirst(":method");
             if (method == null) {
                 throw new IOException("Invalid HTTP/2 headers: missing :method");
@@ -758,7 +753,7 @@ class ServerImpl {
                     }
                     if (clen < 0) {
                         reject(Code.HTTP_BAD_REQUEST, requestLine,
-                                "Illegal Content-Length value");
+                                "Illegal Content-length value");
                         return;
                     }
                 }
@@ -857,11 +852,11 @@ class ServerImpl {
                         .append(code).append(Code.msg(code)).append("\r\n");
 
                 if (text != null && text.length() != 0) {
-                    builder.append("Content-Length: ")
+                    builder.append("Content-length: ")
                             .append(text.length()).append("\r\n")
-                            .append("Content-Type: text/html\r\n");
+                            .append("Content-type: text/html\r\n");
                 } else {
-                    builder.append("Content-Length: 0\r\n");
+                    builder.append("Content-length: 0\r\n");
                     text = "";
                 }
                 if (closeNow) {

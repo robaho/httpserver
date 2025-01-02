@@ -182,7 +182,7 @@ class Request {
         if (hdrs != null) {
             return hdrs;
         }
-        hdrs = new Headers();
+        hdrs = new OptimizedHeaders(16);
 
         BufferedBuilder key = new BufferedBuilder(32);
         BufferedBuilder value = new BufferedBuilder(128);
@@ -221,7 +221,11 @@ class Request {
                         current=value;
                         pbs.skipWhitespace();
                     } else {
-                        current.append((char)c);
+                        if(current==key) {
+                            key.append((char)(current.count==0 ? Character.toUpperCase(c) : Character.toLowerCase(c)));
+                        } else {
+                            current.append((char)c);
+                        }
                     }
                 }
             }

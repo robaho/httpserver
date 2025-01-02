@@ -25,6 +25,7 @@ tasks.withType(Test) {
     jvmArgs += "--add-opens=jdk.httpserver/com.sun.net.httpserver=ALL-UNNAMED"
     systemProperty("java.util.logging.config.file","logging.properties")
     systemProperty("com.sun.net.httpserver.HttpServerProvider","robaho.net.httpserver.DefaultHttpServerProvider")
+    systemProperty("robaho.net.httpserver.http2OverSSL","true")
     systemProperty("robaho.net.httpserver.http2OverNonSSL","true")
     // systemProperty("robaho.net.httpserver.http2MaxConcurrentStreams","5000")
     // systemProperty("robaho.net.httpserver.http2DisableFlushDelay","true")
@@ -35,10 +36,6 @@ tasks.withType(JavaExec) {
     jvmArgs += "--enable-preview"
     systemProperty("java.util.logging.config.file","logging.properties")
     systemProperty("com.sun.net.httpserver.HttpServerProvider","robaho.net.httpserver.DefaultHttpServerProvider")
-}
-
-tasks.withType(JavaExec).configureEach {
-   javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
 }
 
 dependencies {
@@ -122,7 +119,11 @@ task testSingleTest(type: Test) {
     }
 }
 
+
 task runSimpleFileServer(type: Test) { 
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
     dependsOn testClasses
     doLast {
         def props = systemProperties

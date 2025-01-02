@@ -2,7 +2,7 @@ package robaho.net.httpserver.http2.frame;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.EnumSet;
+import java.util.Set;
 
 import robaho.net.httpserver.http2.Utils;
 
@@ -13,7 +13,7 @@ public class FrameHeader {
 	
 	private final int length;
 	private final FrameType type;
-	private final EnumSet<FrameFlag> flags;
+	private final Set<FrameFlag> flags;
 	private final int streamIdentifier;
 
 	/**
@@ -36,7 +36,7 @@ public class FrameHeader {
 	 *            defined as an EnumSet&lt;FrameFlag&gt;, it identifies flags associated with a
 	 *            particular frame
 	 */
-	public EnumSet<FrameFlag> getFlags() {
+	public Set<FrameFlag> getFlags() {
 		return flags;
 	}
 
@@ -47,7 +47,7 @@ public class FrameHeader {
 		return streamIdentifier;
 	}
 
-    public FrameHeader(int length, FrameType type, EnumSet<FrameFlag> flags, int streamIdentifier) {
+    public FrameHeader(int length, FrameType type, Set<FrameFlag> flags, int streamIdentifier) {
 		this.length = length;
 		this.type = type;
 		this.flags = flags;
@@ -75,7 +75,7 @@ public class FrameHeader {
 		FrameHeader frameHeader = null;
 
 		FrameType type = null;
-		EnumSet<FrameFlag> flag = null;
+		Set<FrameFlag> flag = null;
 		int streamIdentifier = 0;
 		int length = 0;
 		int readIndex = 0;
@@ -98,11 +98,54 @@ public class FrameHeader {
 
 		return frameHeader;
 	}
+
+    public static String debug(byte[] header) {
+        try {
+            var type = FrameType.getEnum(header[3]); 
+            return "length="+Utils.convertToInt(header, 0, 3)+", type "+type+", flags "+FrameFlag.getEnumSet(header[4], type)+", stream "+Utils.convertToInt(header, 5);
+        } catch (Exception ex) {
+            return "<unable to parse>";
+        }
+    }
 	
 	public void writeTo(OutputStream os) throws IOException {
         Utils.writeBinary(os,this.length,3);
         os.write(this.getType().value & 0xFF);
         os.write(FrameFlag.getValue(this.getFlags()) & 0xFF);
         Utils.writeBinary(os,this.streamIdentifier);
+    }
+
+    public static void writeTo(OutputStream os, int length,FrameType frameType,Set<FrameFlag> flags,int streamId) throws IOException {
+        Utils.writeBinary(os,length,3);
+        os.write(frameType.value & 0xFF);
+        os.write(FrameFlag.getValue(flags) & 0xFF);
+        Utils.writeBinary(os,streamId);
+    }
+
+    public static byte[] encode(int length,FrameType frameType,Set<FrameFlag> flags,int streamId) {
+        byte[] buffer = new byte[9];
+        Utils.convertToBinary(buffer, 0, length, 3);
+        buffer[3] = (byte)(frameType.value & 0xFF);
+        buffer[4] = (byte)(FrameFlag.getValue(flags) & 0xFF);
+        Utils.convertToBinary(buffer, 5, streamId,4);
+        return buffer;
+    }
+
+    public byte[] encode() {
+        byte[] buffer = new byte[9];
+        Utils.convertToBinary(buffer, 0, length ,3);
+        buffer[3] = (byte)(type.value & 0xFF);
+        buffer[4] = (byte)(FrameFlag.getValue(flags) & 0xFF);
+        Utils.convertToBinary(buffer, 5, streamIdentifier,4);
+        return buffer;
+    }
+
+    /** encode into an existing byte array */
+    public byte[] encode(byte[] buffer) {
+        Utils.convertToBinary(buffer, 0, length ,3);
+        buffer[3] = (byte)(type.value & 0xFF);
+        buffer[4] = (byte)(FrameFlag.getValue(flags) & 0xFF);
+        Utils.convertToBinary(buffer, 5, streamIdentifier,4);
+        return buffer;
     }
 }
