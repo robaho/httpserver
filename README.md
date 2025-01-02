@@ -265,7 +265,7 @@ The http2 implementation passes all specification tests in [h2spec](https://gith
 
 ## Http2 performance notes
 
-Http2 performance has not fully optimized - there is room for improvement.
+Http2 performance has not been fully optimized - there is room for improvement.
 
 The http2 version is almost 3x slower than the http1 version. I expect this to be the case with most http2 implementations due to the complexity.
 
