@@ -66,7 +66,7 @@ public class OpenAddressMap {
         }
         entries[sentinel==-1 ? index : sentinel] = new Entry(key, value);
         size++;
-        used++;
+        if(sentinel!=-1) used++;
         return null;
     }
 

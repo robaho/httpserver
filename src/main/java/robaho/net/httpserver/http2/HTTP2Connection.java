@@ -10,12 +10,10 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.sun.net.httpserver.Headers;
@@ -140,6 +138,7 @@ public class HTTP2Connection {
             for (var frame : partials) {
                 outputStream.write(frame);
             }
+            outputStream.flush();
         } finally {
             unlock();
         }

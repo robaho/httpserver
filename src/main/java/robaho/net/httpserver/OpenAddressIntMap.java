@@ -73,7 +73,8 @@ public class OpenAddressIntMap<T> {
             return null;
         }
         entries[sentinel==-1 ? index : sentinel] = new Entry(key, value);
-        size++; used++;
+        size++;
+        if(sentinel!=-1) used++;
         return null;
     }
 
