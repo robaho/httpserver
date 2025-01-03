@@ -40,7 +40,7 @@ public class OptimizedHeaders extends Headers {
 
     @Override
     public List<String> put(String key, List<String> value) {
-        Object o = map.put(normalize((String)key), value);
+        Object o = map.put(normalize(key), value);
         return o == null ? null : (o instanceof String) ? Arrays.asList((String)o) : (List<String>)o;
     }
 
@@ -52,7 +52,7 @@ public class OptimizedHeaders extends Headers {
 
     @Override
     public String getFirst(String key) {
-        Object o = map.get(normalize((String)key));
+        Object o = map.get(normalize(key));
         return o == null ? null : (o instanceof String) ? (String)o : ((List<String>)o).getFirst();
     }
 
@@ -98,11 +98,12 @@ public class OptimizedHeaders extends Headers {
 
     @Override
     public void add(String key, String value) {
-        Object o = map.get(normalize((String)key));
+        var normalized = normalize(key);
+        Object o = map.get(normalized);
         if (o == null) {
-            map.put(normalize(key), value);
+            map.put(normalized, value);
         } else if(o instanceof String) {
-            map.put(normalize(key), Arrays.asList((String)o,value));
+            map.put(normalized, Arrays.asList((String)o,value));
         } else {
             ((List<String>)o).add(value);
         }
