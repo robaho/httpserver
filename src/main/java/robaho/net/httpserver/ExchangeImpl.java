@@ -239,6 +239,8 @@ class ExchangeImpl {
             getConnection().getSocket().setOption(StandardSocketOptions.SO_SNDBUF, bufferSize);
         }
 
+        boolean flush = false;
+
         /* check for response type that is not allowed to send a body */
         if (rCode == 101) {
             logger.log(Level.DEBUG, () -> "switching protocols");
@@ -249,6 +251,7 @@ class ExchangeImpl {
                 logger.log(Level.WARNING, msg);
             }
             contentLen = 0;
+            flush = true;
 
         } else if ((rCode >= 100 && rCode < 200) /* informational */
                 || (rCode == 204) /* no content */
@@ -280,6 +283,7 @@ class ExchangeImpl {
                 if (websocket || isConnectRequest()) {
                     o.setWrappedStream(ros);
                     close = true;
+                    flush = true;
                 }
                 else if (http10) {
                     o.setWrappedStream(new UndefLengthOutputStream(this, ros));
@@ -323,7 +327,7 @@ class ExchangeImpl {
         if(logger.isLoggable(Level.TRACE)) {
             logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
         }
-        if(contentLen==0) {
+        if(flush) {
             ros.flush();
         }   
         if (noContentToSend) {

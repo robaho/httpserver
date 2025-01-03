@@ -132,7 +132,9 @@ class ChunkedOutputStream extends FilterOutputStream {
         if (closed) {
             return;
         }
-        flush();
+        if (count > 0) {
+            writeChunk();
+        }
         try {
             /* write an empty chunk */
             writeChunk();
