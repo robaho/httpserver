@@ -72,28 +72,17 @@ public class OptimizedHeaders extends Headers {
             if (c == '\r' || c == '\n')
                 throw new IllegalArgumentException("illegal character in key");
             if(i==0) {
-                if (c >= 'a' && c <= 'z') {
+                if (Character.isLowerCase(c)) {
                     break;
                 }
             } else {
-                if (c >= 'A' && c <= 'Z') {
+                if (Character.isUpperCase(c)) {
                     break;
                 }
             }
         }
         if(i==len) return key;
-
-        char[] buffer = key.toCharArray();
-        for(;i<len;i++) {
-            char c = buffer[i];
-            if(i==0 && c >= 'a' && c <= 'z') {
-                buffer[i] = (char)(c - ('a' - 'A'));
-            } else if (i!=0 && c >= 'A' && c <= 'Z') {
-                buffer[i] = (char) (c + ('a' - 'A'));
-            } else if (c == '\r' || c == '\n')
-                throw new IllegalArgumentException("illegal character in key");
-        }
-        return new String(buffer);
+        return Character.toUpperCase(key.charAt(0))+key.substring(1).toLowerCase();
     }
 
     @Override

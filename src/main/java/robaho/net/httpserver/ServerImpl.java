@@ -552,7 +552,7 @@ class ServerImpl {
                 throw new IOException("Invalid HTTP/2 headers: missing :authority or :path");
             }
 
-            request.add("Host",authority);
+            request.set("Host",authority);
 
             URI uri;
             try {

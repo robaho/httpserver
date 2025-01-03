@@ -64,7 +64,9 @@ public class HTTP2Stream {
         if(setting!=null) {
             sendWindow.addAndGet((int)(setting.value-65535));
         }
-        logger.log(Level.TRACE,() -> "new stream, window size "+sendWindow.get()+" on stream "+streamId);
+        if(logger.isLoggable(Level.TRACE)) {
+            logger.log(Level.TRACE,() -> "new stream, window size "+sendWindow.get()+" on stream "+streamId);
+        }
     }
 
     public OutputStream getOutputStream() {
