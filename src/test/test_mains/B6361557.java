@@ -65,7 +65,7 @@ public class B6361557 {
     }
 
     final static String request = "GET /test/foo.html HTTP/1.1\r\nContent-length: 0\r\n\r\n";
-    final static ByteBuffer requestBuf = ByteBuffer.allocate(64).put(request.getBytes());
+    final static ByteBuffer requestBuf = ByteBuffer.wrap(request.getBytes());
 
     public static void main (String[] args) throws Exception {
         Handler handler = new Handler();
