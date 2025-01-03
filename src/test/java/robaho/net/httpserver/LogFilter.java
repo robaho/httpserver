@@ -22,19 +22,20 @@ package robaho.net.httpserver;
  * questions.
  */
 
-import java.util.*;
-import java.text.*;
 import java.io.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import com.sun.net.httpserver.*;
 
 public class LogFilter extends Filter {
 
     PrintStream ps;
-    DateFormat df;
+    DateTimeFormatter df;
 
     public LogFilter(File file) throws IOException {
-        ps = new PrintStream(new FileOutputStream(file));
-        df = DateFormat.getDateTimeInstance();
+        ps = new PrintStream(new BufferedOutputStream(new FileOutputStream(file)));
+        df = DateTimeFormatter.ISO_DATE_TIME;
     }
 
     /**
@@ -42,12 +43,17 @@ public class LogFilter extends Filter {
      */
     public void doFilter(HttpExchange t, Filter.Chain chain) throws IOException {
         chain.doFilter(t);
-        HttpContext context = t.getHttpContext();
-        Headers rmap = t.getRequestHeaders();
-        String s = df.format(new Date());
-        s = s + " " + t.getRequestMethod() + " " + t.getRequestURI() + " ";
-        s = s + " " + t.getResponseCode() + " " + t.getRemoteAddress();
-        ps.println(s);
+        StringBuilder sb = new StringBuilder();
+        df.formatTo(LocalDateTime.now(),sb);
+        sb.append(" ");
+        sb.append(t.getRequestMethod());
+        sb.append(" ");
+        sb.append(t.getRequestURI());
+        sb.append(" ");
+        sb.append(t.getResponseCode());
+        sb.append(" ");
+        sb.append(t.getRemoteAddress());
+        ps.println(sb.toString());
     }
 
     public void init(HttpContext ctx) {

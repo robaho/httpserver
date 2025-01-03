@@ -38,23 +38,30 @@ public class EchoHandler implements HttpHandler {
         throws IOException
     {
         InputStream is = t.getRequestBody();
-        Headers map = t.getRequestHeaders();
-        String fixedrequest = map.getFirst ("XFixed");
-
-        // return the number of bytes received (no echo)
-        String summary = map.getFirst ("XSummary");
         OutputStream os = t.getResponseBody();
-        byte[] in;
-        in = is.readAllBytes();
-        if (summary != null) {
-            in = Integer.toString(in.length).getBytes(StandardCharsets.UTF_8);
-        }
-        if (fixedrequest != null) {
-            t.sendResponseHeaders(200, in.length == 0 ? -1 : in.length);
-        } else {
+
+        Headers map = t.getRequestHeaders();
+
+        String fixedrequest = map.getFirst("Xfixed");
+        // return the number of bytes received (no echo)
+        String summary = map.getFirst ("Xsummary");
+
+        if(fixedrequest==null && summary==null) {
             t.sendResponseHeaders(200, 0);
+            is.transferTo(os);
+        } else {
+            byte[] in;
+            in = is.readAllBytes();
+            if (summary != null) {
+                in = Integer.toString(in.length).getBytes(StandardCharsets.UTF_8);
+            }
+            if (fixedrequest != null) {
+                t.sendResponseHeaders(200, in.length == 0 ? -1 : in.length);
+            } else {
+                t.sendResponseHeaders(200, 0);
+            }
+            os.write(in);
         }
-        os.write(in);
         close(t, os);
         close(t, is);
     }

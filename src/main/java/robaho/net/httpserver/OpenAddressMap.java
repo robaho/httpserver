@@ -3,19 +3,17 @@ package robaho.net.httpserver;
 import java.util.Arrays;
 import java.util.function.BiConsumer;
 
-public class OpenAddressMap {
+public class OpenAddressMap<K,V> {
 
-    private static class Entry {
+    private static class Entry<K,V> {
+        K key;
+        V value;
 
-        String key;
-        Object value;
-
-        Entry(String key, Object value) {
+        Entry(K key, V value) {
             this.key = key;
             this.value = value;
         }
     }
-
     private int capacity;
     private int mask;
     private int size;
@@ -37,7 +35,7 @@ public class OpenAddressMap {
         this.entries = new Entry[capacity];
     }
 
-    public Object put(String key, Object value) {
+    public V put(K key, V value) {
         if(used>=capacity/2) {
             resize();
         }
@@ -53,7 +51,7 @@ public class OpenAddressMap {
                 if (value == null) {
                     size--;
                 }
-                return oldValue;
+                return (V)oldValue;
             } else if (entry.value == null) {
                 sentinel = index;
             }
@@ -72,7 +70,7 @@ public class OpenAddressMap {
 
     private void resize() {
         OpenAddressMap newMap = new OpenAddressMap(capacity << 1);
-        for (Entry entry : entries) {
+        for (var entry : entries) {
             if (entry != null) {
                 newMap.put(entry.key, entry.value);
             }
@@ -84,13 +82,13 @@ public class OpenAddressMap {
         this.used = newMap.used;
     }
 
-    public Object get(String key) {
+    public V get(K key) {
         int index = key.hashCode() & mask;
         int start = index;
         Entry entry;
         while ((entry = entries[index]) != null) {
             if (entry.key.equals(key)) {
-                return entry.value;
+                return (V)entry.value;
             }
             index = (index + 1) & mask;
             if(index==start) {
@@ -110,10 +108,10 @@ public class OpenAddressMap {
         used=0;
     }
 
-    public void forEach(BiConsumer<String,Object> action) {
+    public void forEach(BiConsumer<K,V> action) {
         for (Entry entry : entries) {
             if (entry != null && entry.value != null) {
-                action.accept(entry.key,entry.value);
+                action.accept((K)entry.key,(V)entry.value);
             }
         }
     }

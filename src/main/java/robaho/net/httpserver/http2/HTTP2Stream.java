@@ -17,6 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.sun.net.httpserver.Headers;
 
+import robaho.net.httpserver.NoSyncBufferedInputStream;
 import robaho.net.httpserver.NoSyncBufferedOutputStream;
 import robaho.net.httpserver.OptimizedHeaders;
 import robaho.net.httpserver.http2.hpack.HPackContext;
@@ -106,7 +107,7 @@ public class HTTP2Stream {
         } catch (IOException e) {
             if(!connection.isClosed()) {
                 connection.close();
-                logger.log(connection.httpConnection.requestCount.get()>0 ? Level.WARNING : Level.DEBUG,"IOException closing http2 stream",e);
+                logger.log(connection.httpConnection.requestCount.get()>0 ? Level.WARNING : Level.DEBUG, "IOException closing http2 stream",e);
             }
         } finally {
         }
@@ -124,7 +125,7 @@ public class HTTP2Stream {
             break;
         case DATA:
             DataFrame dataFrame = (DataFrame) frame;
-            logger.log(Level.TRACE,"received data frame, length "+dataFrame.body.length+" on stream "+streamId);
+            logger.log(Level.TRACE,()->"received data frame, length "+dataFrame.body.length+" on stream "+streamId);
             if(halfClosed) {
                 throw new HTTP2Exception(HTTP2ErrorCode.STREAM_CLOSED);
             }
@@ -132,7 +133,6 @@ public class HTTP2Stream {
                 throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR);
             }
             pipe.getOutputStream().write(dataFrame.body);
-            logger.log(Level.TRACE,"wrote data frame to pipe, length "+dataFrame.body.length+" on stream "+streamId);
             dataInSize += dataFrame.body.length;
             if (dataFrame.getHeader().getFlags().contains(FrameFlag.END_STREAM)) {
                 if(requestHeaders.containsKey("Content-length")) {
@@ -314,12 +314,13 @@ public class HTTP2Stream {
 
     // custom Pipe implementation since JDK version still uses synchronized methods which are not optimal for virtual threads
     private static class Pipe {
-        private final CustomPipedInputStream inputStream;
+        private final InputStream inputStream;
         private final CustomPipedOutputStream outputStream;
 
         public Pipe() {
-            this.inputStream = new CustomPipedInputStream();
-            this.outputStream = new CustomPipedOutputStream(this.inputStream);
+            var pipeIn = new CustomPipedInputStream();
+            this.inputStream = new NoSyncBufferedInputStream(pipeIn);
+            this.outputStream = new CustomPipedOutputStream(pipeIn);
         }
 
         public InputStream getInputStream() {
@@ -349,8 +350,16 @@ public class HTTP2Stream {
         private final Condition notEmpty = lock.newCondition();
         private final Condition notFull = lock.newCondition();
 
+        private final byte[] single = new byte[1];
+
         @Override
         public int read() throws IOException {
+            int n = read(single, 0, 1);
+            return n == -1 ? -1 : single[0] & 0xFF;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
             lock.lock();
             try {
                 while (readPos == writePos && !closed) {
@@ -363,28 +372,25 @@ public class HTTP2Stream {
                 if (closed && readPos == writePos) {
                     return -1;
                 }
-                int result = buffer[readPos++] & 0xFF;
+
+                int available;
+                if (readPos <= writePos) {
+                    available = writePos - readPos;
+                } else {
+                    available = buffer.length - readPos;
+                }
+
+                int bytesToRead = Math.min(len, available);
+                System.arraycopy(buffer, readPos, b, off, bytesToRead);
+                readPos += bytesToRead;
                 if (readPos == buffer.length) {
                     readPos = 0;
                 }
                 notFull.signal();
-                return result;
+                return bytesToRead;
             } finally {
                 lock.unlock();
             }
-        }
-
-        @Override
-        public int read(byte[] b, int off, int len) throws IOException {
-            int bytesRead = 0;
-            while (bytesRead < len) {
-                int byteRead = read();
-                if (byteRead == -1) {
-                    return bytesRead == 0 ? -1 : bytesRead;
-                }
-                b[off + bytesRead++] = (byte) byteRead;
-            }
-            return bytesRead;
         }
 
         @Override

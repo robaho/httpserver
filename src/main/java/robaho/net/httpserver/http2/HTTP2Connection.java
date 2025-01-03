@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -72,6 +73,7 @@ public class HTTP2Connection {
     private int highNumberStreams = 0;
 
     private final Lock lock = new ReentrantLock();
+    private AtomicBoolean closed = new AtomicBoolean(false);
 
     /**
      * Constructor to instantiate HTTP2Connection object
@@ -108,8 +110,10 @@ public class HTTP2Connection {
     }
 
     public void close() {
-        for (HTTP2Stream stream : http2Streams.values()) {
-            stream.close();
+        if(closed.compareAndSet(false,true)) {
+            for (HTTP2Stream stream : http2Streams.values()) {
+                stream.close();
+            }
         }
     }
 
@@ -160,7 +164,7 @@ public class HTTP2Connection {
     }
 
     public boolean isClosed() {
-        return httpConnection.isClosed();
+        return closed.get();
     }
 
     public void handle() throws Exception {

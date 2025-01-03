@@ -13,7 +13,7 @@ import java.util.function.BiConsumer;
 import com.sun.net.httpserver.Headers;
 
 public class OptimizedHeaders extends Headers {
-    private final OpenAddressMap map;
+    private final OpenAddressMap<String,Object> map;
     public OptimizedHeaders() {
         super();
         map = new OpenAddressMap(16);
@@ -82,8 +82,6 @@ public class OptimizedHeaders extends Headers {
             }
         }
         if(i==len) return key;
-
-        System.out.println("normalizing key: " + key);
 
         char[] buffer = key.toCharArray();
         for(;i<len;i++) {

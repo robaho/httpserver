@@ -512,7 +512,7 @@ class ServerImpl {
                 http2.handle();
             } catch (HTTP2Exception ex) {
                 logger.log(Level.WARNING, "ServerImpl http2 protocol exception "+http2, ex.getMessage());
-            } catch (EOFException ex) {
+            } catch (EOFException | SocketException ex) {
                 logger.log(Level.DEBUG, "end of stream "+http2);
             } catch (Exception ex) {
                 logger.log(Level.WARNING, "ServerImpl unexpected exception handling http2 connection "+http2, ex);
