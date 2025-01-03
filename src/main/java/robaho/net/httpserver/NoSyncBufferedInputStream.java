@@ -262,6 +262,15 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
             out.write(buf,pos,count-pos);
             pos = count;
         }
-        return super.transferTo(out);
+        long total = avail;
+        while (true) {
+            fill();
+            if (count <= 0) {
+                break;
+            }
+            out.write(buf, 0, count);
+            total += count;
+        }
+        return total;
     }
 }
