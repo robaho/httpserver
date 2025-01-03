@@ -83,6 +83,31 @@ sourceSets {
     }
 }
 
+task runSingleUnitTest(type: Test) {
+    dependsOn testClasses
+    filter {
+        includeTestsMatching 'InputNotRead'
+    }
+    useTestNG()
+}
+
+/** used for developmet to run a single test */
+task runSingleMainTest(type: Test) { 
+    dependsOn testMainsClasses
+    doLast {
+        def testname = "SecureProxyHandlerTest"
+        println jvmArgs
+        println systemProperties
+        def props = systemProperties
+        javaexec {
+            classpath sourceSets.testMains.runtimeClasspath
+            main testname
+            systemProperties = props
+            // debug true
+        }
+    }
+}
+
 task testMainsTest(type: Test) { 
     dependsOn testMainsClasses
     doLast {
@@ -101,24 +126,6 @@ task testMainsTest(type: Test) {
         }
     }
 }
-
-/** used for developmet to run a single test */
-task testSingleTest(type: Test) { 
-    dependsOn testMainsClasses
-    doLast {
-        def testname = "Test1"
-        println jvmArgs
-        println systemProperties
-        def props = systemProperties
-        javaexec {
-            classpath sourceSets.testMains.runtimeClasspath
-            main testname
-            systemProperties = props
-            // debug true
-        }
-    }
-}
-
 
 task runSimpleFileServer(type: Test) { 
     javaLauncher = javaToolchains.launcherFor {
@@ -146,9 +153,13 @@ task run(type: JavaExec) {
     dependsOn testMainsClasses
 }
 
-publish {
+task runAllTests(type: Test) {
     dependsOn test
     dependsOn testMainsTest
+}
+
+publish {
+    dependsOn runAllTests
 }
 
 publishing {
