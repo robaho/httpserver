@@ -2,13 +2,9 @@ package robaho.net.httpserver.http2.hpack;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.EnumSet;
-import java.util.LinkedList;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -20,7 +16,6 @@ import com.sun.net.httpserver.Headers;
 
 import robaho.net.httpserver.http2.frame.FrameFlag;
 import robaho.net.httpserver.http2.frame.FrameHeader;
-import robaho.net.httpserver.http2.frame.FrameType;
 import robaho.net.httpserver.http2.Utils;
 import robaho.net.httpserver.http2.frame.FrameType;
 
@@ -43,7 +38,7 @@ public class HPackContext {
     }
 
     public List<HTTP2HeaderField> decodeFieldSegments(byte[] buffer) throws HTTP2Exception {
-        List<HTTP2HeaderField> headers = new ArrayList<>();
+        List<HTTP2HeaderField> headers = new ArrayList<>(8);
         int index = 0;
 
         try {
@@ -232,10 +227,12 @@ public class HPackContext {
         List<byte[]> pseudo = new ArrayList<>(6);
         headers.forEach((name, values) -> {
             for (String value : values) {
-                byte[] header = encodeHeader(name.toLowerCase(), value);
                 if(name.startsWith(":")) {
+                    byte[] header = encodeHeader(name, value);
                     pseudo.add(header);
                 } else {
+                    // Headers keys are normalized to the first letter in uppercase and the rest in lowercase
+                    byte[] header = encodeHeader(Character.toLowerCase(name.charAt(0))+name.substring(1), value);
                     fields.add(header);
                 }
             }
