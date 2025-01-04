@@ -327,7 +327,7 @@ public class HTTP2Connection {
                 // streamID is not present and has to be greater than all
                 // the stream IDs present
                 fields.validate();
-                Headers requestHeaders = new OptimizedHeaders(fields.size());
+                Headers requestHeaders = new OptimizedHeaders(fields.size()*2);
                 for (HTTP2HeaderField field : fields) {
                     if (field.value == null) {
                         logger.log(Level.TRACE, () -> "ignoring null header for " + field.getName());

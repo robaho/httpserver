@@ -90,17 +90,32 @@ public class OpenAddressMap<K,V> {
     public V get(K key) {
         int index = hash(key.hashCode()) & mask;
         int start = index;
+        // int count=0;
         Entry entry;
-        while ((entry = entries[index]) != null) {
-            if (entry.key.equals(key)) {
-                return (V)entry.value;
+        try {
+            while ((entry = entries[index]) != null) {
+                // count++;
+                if (entry.key.equals(key)) {
+                    return (V)entry.value;
+                }
+                index = (index + 1) & mask;
+                if(index==start) {
+                    break;
+                }
             }
-            index = (index + 1) & mask;
-            if(index==start) {
-                break;
-            }
+            return null;
+        } finally {
+            // System.out.println("count="+count);
+            // if(count>5) {
+            //     for(var e : entries) {
+            //         if(e!=null) {
+            //             System.out.println(e.key+"="+e.value);
+            //         } else {
+            //             System.out.println("null");
+            //         }
+            //     }
+            // }
         }
-        return null;
     }
 
     public int size() {

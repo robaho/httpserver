@@ -64,6 +64,25 @@ public class Utils {
     }
     private static final byte[] EMPTY = new byte[0];
 
+    public static byte[] combineByteArrays(byte[]... blocks) {
+        if(blocks.length==0) return EMPTY;
+        if(blocks.length==1) return blocks[0];
+
+        int totalLength = 0;
+        for (byte[] block : blocks) {
+            totalLength += block.length;
+        }
+
+        byte[] combined = new byte[totalLength];
+        int offset = 0;
+        for (byte[] block : blocks) {
+            System.arraycopy(block, 0, combined, offset, block.length);
+            offset += block.length;
+        }
+
+        return combined;
+    }
+
     public static byte[] combineByteArrays(List<byte[]> blocks) {
         if(blocks.isEmpty()) return EMPTY;
         if(blocks.size()==1) return blocks.get(0);

@@ -12,11 +12,7 @@ import java.util.function.BiConsumer;
 
 import com.sun.net.httpserver.Headers;
 
-import robaho.net.httpserver.http2.hpack.HPackContext;
-
 public class OptimizedHeaders extends Headers {
-    private static final BloomSet commonKeys = BloomSet.of(HPackContext.getStaticHeaderNames().stream().map(s -> (Character.toUpperCase(s.charAt(0))+s.substring(1))).toArray(String[]::new));
-
     private final OpenAddressMap<String,Object> map;
     public OptimizedHeaders() {
         super();
@@ -68,8 +64,6 @@ public class OptimizedHeaders extends Headers {
     private static String normalize(String key) {
         int len = key.length();
         if(len==0) return key;
-
-        if(commonKeys.contains(key)) return key;
 
         int i=0;
 

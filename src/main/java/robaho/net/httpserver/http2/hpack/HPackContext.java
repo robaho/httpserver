@@ -1,10 +1,10 @@
 package robaho.net.httpserver.http2.hpack;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -14,6 +14,7 @@ import java.util.Map;
 
 import com.sun.net.httpserver.Headers;
 
+import robaho.net.httpserver.OpenAddressMap;
 import robaho.net.httpserver.http2.frame.FrameFlag;
 import robaho.net.httpserver.http2.frame.FrameHeader;
 import robaho.net.httpserver.http2.Utils;
@@ -24,10 +25,6 @@ public class HPackContext {
     private final List<HTTP2HeaderField> dynamicTable = new ArrayList(1024);
 
     public HPackContext() {
-    }
-
-    public static Collection<String> getStaticHeaderNames() {
-        return RFC7541Parser.getStaticHeaderNames();
     }
 
     public HTTP2HeaderField getHeaderField(int index) {
@@ -212,11 +209,69 @@ public class HPackContext {
         return index;
     }
 
+    /** this method is optimized for a server implementation and is not suitable for generic http2 hpack header encoding */
     public static void writeHeaderFrame(Headers headers, OutputStream outputStream, int streamId) throws IOException {
-        byte[] buffer = encodeHeaders(headers);
-        FrameHeader.writeTo(outputStream, buffer.length,FrameType.HEADERS, END_OF_HEADERS, streamId);
-        outputStream.write(buffer);
-        // System.out.println("HPACK.writeHeaderFrame: wrote header frame, length: " + buffer.length + ", streamId: " + streamId);
+        ByteArrayOutputStream fields = new ByteArrayOutputStream(256); // average http headers length is 800 bytes
+
+        // ':status' is required and the only allowed outbound pseudo headers
+        fields.write(encodeHeader(":status", headers.getFirst(":status")));
+
+        StringBuilder sb = new StringBuilder(32);
+
+        headers.forEach((name, values) -> {
+            for (String value : values) {
+                if(name.startsWith(":")) {
+                    continue;
+                }
+                // Headers keys are normalized to the first letter in uppercase and the rest in lowercase
+                // http2 keys are all lowercase
+
+                sb.setLength(0);
+                sb.append(Character.toLowerCase(name.charAt(0)));
+                sb.append(name.substring(1));
+
+                byte[] header = encodeHeader(sb.toString(), value);
+                try {
+                    fields.write(header);
+                } catch (IOException ex) {
+                }
+            }
+        });
+
+        FrameHeader.writeTo(outputStream, fields.size(),FrameType.HEADERS, END_OF_HEADERS, streamId);
+        fields.writeTo(outputStream);
+    }
+
+    public static void writeGenericHeaderFrame(Headers headers, OutputStream outputStream, int streamId) throws IOException {
+        ByteArrayOutputStream pseudo = new ByteArrayOutputStream();
+        ByteArrayOutputStream fields = new ByteArrayOutputStream();
+
+        headers.forEach((name, values) -> {
+            for (String value : values) {
+                if(name.startsWith(":")) {
+                    // Headers keys are normalized to the first letter in uppercase and the rest in lowercase
+                    // http2 keys are all lowercase
+                    byte[] header = encodeHeader(Character.toLowerCase(name.charAt(0))+name.substring(1), value);
+                    try {
+                        pseudo.write(header);
+                    } catch (IOException ex) {
+                    }
+                } else {
+                    // Headers keys are normalized to the first letter in uppercase and the rest in lowercase
+                    // http2 keys are all lowercase
+                    byte[] header = encodeHeader(Character.toLowerCase(name.charAt(0))+name.substring(1), value);
+                    try {
+                        fields.write(header);
+                    } catch (IOException ex) {
+                    }
+
+                }
+            }
+        });
+
+        FrameHeader.writeTo(outputStream,pseudo.size()+fields.size(),FrameType.HEADERS, END_OF_HEADERS, streamId);
+        pseudo.writeTo(outputStream);
+        fields.writeTo(outputStream);
     }
 
     private static final FlagSet END_OF_HEADERS = FlagSet.of(FrameFlag.END_HEADERS);
@@ -254,26 +309,24 @@ public class HPackContext {
 
         byte[] buffer = new byte[1];
         buffer[0]=0x00; // Literal Header Field without Indexing
+        byte[] name_buffer = null;
 
         if(index!=null) {
             buffer = encodeIndexedField(index,4);
         } else {
             byte[] nameBytes = name.getBytes();
-            byte[] header = encodeString(nameBytes);
-            buffer = Arrays.copyOf(buffer, buffer.length + header.length);
-            System.arraycopy(header, 0, buffer, buffer.length - header.length, header.length);
+            name_buffer = encodeString(nameBytes);
         }
 
         // Encode header value
         byte[] valueBytes = value.getBytes();
-        byte[] header = encodeString(valueBytes);
-        buffer = Arrays.copyOf(buffer, buffer.length + header.length);
-        System.arraycopy(header, 0, buffer, buffer.length - header.length, header.length);
+        byte[] value_buffer = encodeString(valueBytes);
 
-        return buffer;
+        return name_buffer == null ? Utils.combineByteArrays(buffer,value_buffer) : Utils.combineByteArrays(buffer,name_buffer,value_buffer);
     }
 
     private static byte[] encodeString(byte[] value) {
+        // TODO: implement huffman encoding
         byte[] buffer = new byte[0];
         if (value.length < 128) {
             buffer = Arrays.copyOf(buffer, buffer.length + 1);
@@ -392,20 +445,13 @@ class RFC7541Parser {
         STATIC_HEADER_TABLE[61] = new HTTP2HeaderField("www-authenticate", null);
     }
 
-    private static final Map<String, Integer> STATIC_HEADER_NAME_TO_INDEX = Arrays.stream(STATIC_HEADER_TABLE)
-        .filter(f -> f != null)
-        .collect(java.util.stream.Collectors.toMap(
-            f -> f.name,
-            f -> Arrays.asList(STATIC_HEADER_TABLE).indexOf(f),
-            (a, b) -> a
-        ));
+    private static final OpenAddressMap<String, Integer> STATIC_HEADER_NAME_TO_INDEX = new OpenAddressMap<>(256);
+    static {
+        Arrays.stream(STATIC_HEADER_TABLE).filter(v -> v!=null).forEach(v -> STATIC_HEADER_NAME_TO_INDEX.put(v.name, Arrays.asList(STATIC_HEADER_TABLE).indexOf(v)));
+    }
 
     public static Integer getIndex(String name) {
         return STATIC_HEADER_NAME_TO_INDEX.get(name);
-    }
-    
-    public static Collection<String> getStaticHeaderNames() {
-        return STATIC_HEADER_NAME_TO_INDEX.keySet();
     }
 
     public static HTTP2HeaderField getHeaderField(int index) {

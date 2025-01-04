@@ -70,8 +70,15 @@ public class Huffman {
             this.value = value;
         }
     }
+    /**
+     * a skip list of huffman codes
+     */
     private static class HuffmanCodes {
         private final HuffmanCode[] codes;
+        /** 
+         * holds the offset into the array for the start of codes by the code length, or -1 if there
+         * are no codes of that length
+         */
         private final int[] offsets = new int[33];
 
         HuffmanCodes(HuffmanCode[] codes) {
@@ -86,6 +93,7 @@ public class Huffman {
                 }               
             }
         }
+        /** @return the matched character value or null if no match */
         Integer get(HuffmanSequence sequence) {
             int index = offsets[sequence.length];
             if (index == -1) {
