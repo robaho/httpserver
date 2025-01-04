@@ -51,7 +51,7 @@ The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-
 <sup>1</sup>_The robaho version has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
 <sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor._
 
-Performance tests against the latest Jetty version were run. The `robaho httpserver` outperformed the Jetty http2 by 5x in both http1 and http2.
+Performance tests against the latest Jetty version were run. The `robaho httpserver` outperformed the Jetty http2 by 3x, and http1 by 5x.
 
 The Javalin/Jetty project is available [here](https://github.com/robaho/javalin-http2-example)
 
@@ -159,15 +159,16 @@ Jetty 11 http2
 starting benchmark...
 spawning thread #0: 16 total client(s). 1000000 total requests
 Application protocol: h2c
-finished in 5.20s, 192421.22 req/s, 6.79MB/s
+finished in 3.47s, 288284.80 req/s, 10.17MB/s
 requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
 status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
-traffic: 35.29MB (37003264) total, 7.63MB (8002384) headers (space savings 90.12%), 10.49MB (11000000) data
+traffic: 35.29MB (37002689) total, 7.63MB (8001809) headers (space savings 90.12%), 10.49MB (11000000) data
                      min         max         mean         sd        +/- sd
-time for request:      142us     43.73ms      7.20ms      3.96ms    70.90%
-time for connect:      176us      7.70ms      3.96ms      2.34ms    62.50%
-time to 1st byte:    10.48ms     20.63ms     13.65ms      2.93ms    75.00%
-req/s           :   12026.57    12200.62    12070.81       46.69    93.75%
+time for request:       94us    381.85ms      6.42ms     21.51ms    96.90%
+time for connect:      389us      5.88ms      3.15ms      1.75ms    62.50%
+time to 1st byte:     6.61ms     11.74ms      7.85ms      1.24ms    87.50%
+req/s           :   18020.94    23235.01    19829.09     1588.94    75.00%
+
 ```
 
 Jetty 11 http1
@@ -175,15 +176,16 @@ Jetty 11 http1
 starting benchmark...
 spawning thread #0: 16 total client(s). 1000000 total requests
 Application protocol: http/1.1
-finished in 3.86s, 258839.63 req/s, 33.82MB/s
+finished in 3.63s, 275680.69 req/s, 36.02MB/s
 requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
-status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
+status codes: 1000021 2xx, 0 3xx, 0 4xx, 0 5xx
 traffic: 130.65MB (137000000) total, 86.78MB (91000000) headers (space savings 0.00%), 10.49MB (11000000) data
                      min         max         mean         sd        +/- sd
-time for request:     1.52ms    194.72ms     60.42ms     21.40ms    74.16%
-time for connect:      172us      4.07ms      2.13ms      1.21ms    62.50%
-time to 1st byte:     4.70ms     10.80ms      6.66ms      1.96ms    87.50%
-req/s           :   16178.98    16976.90    16456.91      175.54    81.25%
+time for request:     1.59ms    336.00ms     53.17ms     51.56ms    85.36%
+time for connect:      422us      2.57ms      1.54ms       632us    62.50%
+time to 1st byte:     2.98ms    314.97ms     26.14ms     77.12ms    93.75%
+req/s           :   17232.15    21230.14    18780.35     1130.32    68.75
+
 ```
 
 robaho http2
@@ -191,15 +193,15 @@ robaho http2
 starting benchmark...
 spawning thread #0: 16 total client(s). 1000000 total requests
 Application protocol: h2c
-finished in 1.08s, 927732.43 req/s, 38.93MB/s
+finished in 1.03s, 966710.36 req/s, 40.57MB/s
 requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
 status codes: 1000000 2xx, 0 3xx, 0 4xx, 0 5xx
 traffic: 41.96MB (44000480) total, 5.72MB (6000000) headers (space savings 76.92%), 10.49MB (11000000) data
                      min         max         mean         sd        +/- sd
-time for request:      226us     84.23ms     15.51ms      9.23ms    77.11%
-time for connect:      521us      5.57ms      3.13ms      1.57ms    62.50%
-time to 1st byte:     6.46ms     17.15ms     10.12ms      3.82ms    81.25%
-req/s           :   58012.46    66943.10    60509.05     2819.65    87.50%
+time for request:      457us     71.41ms     14.71ms      8.63ms    73.09%
+time for connect:      336us      5.77ms      3.13ms      1.73ms    62.50%
+time to 1st byte:     6.59ms     15.30ms     10.40ms      3.32ms    50.00%
+req/s           :   60461.71    66800.04    62509.79     1544.65    75.00%
 ```
 
 robaho http1
@@ -207,15 +209,15 @@ robaho http1
 starting benchmark...
 spawning thread #0: 16 total client(s). 1000000 total requests
 Application protocol: http/1.1
-finished in 784.26ms, 1275080.84 req/s, 105.79MB/s
+finished in 776.64ms, 1287592.88 req/s, 106.83MB/s
 requests: 1000000 total, 1000000 started, 1000000 done, 1000000 succeeded, 0 failed, 0 errored, 0 timeout
-status codes: 1001125 2xx, 0 3xx, 0 4xx, 0 5xx
+status codes: 1000123 2xx, 0 3xx, 0 4xx, 0 5xx
 traffic: 82.97MB (87000000) total, 46.73MB (49000000) headers (space savings 0.00%), 10.49MB (11000000) data
                      min         max         mean         sd        +/- sd
-time for request:      763us     26.87ms     12.34ms      2.71ms    74.28%
-time for connect:      104us      4.32ms      2.23ms      1.30ms    62.50%
-time to 1st byte:     4.91ms     16.21ms     10.36ms      4.49ms    43.75%
-req/s           :   79744.46    81149.46    80228.21      355.56    75.00%
+time for request:      376us    380.30ms      9.12ms     32.43ms    99.20%
+time for connect:      240us      2.51ms      1.50ms       720us    62.50%
+time to 1st byte:     3.04ms     18.85ms      8.93ms      5.77ms    68.75%
+req/s           :   80530.13   167605.46   122588.82    42385.59    87.50%
 ```
 
 </details>
@@ -248,7 +250,7 @@ The counts can be reset using `/__stats?reset`. The `requests/sec` is calculated
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.16</version>
+  <version>1.0.17</version>
 </dependency>
 ```
 ## enable Http2
@@ -263,10 +265,26 @@ See the additional Http2 options in `ServerConfig.java`
 
 The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
 
-## Http2 performance notes
+## performance notes
 
-Http2 performance has not been fully optimized - there is room for improvement.
+Http2 performance has not been fully optimized. The http2 version is about 20-30% slower than http1. I expect this to be the case with most http2 implementations due to the complexity.
+http2 outperforms http1 when sending multiple simultaneous requests from the client with payloads, as most servers and clients do not implement http pipelining when payloads are involved.
 
-The http2 version is about 20% slower than http1. I expect this to be the case with most http2 implementations due to the complexity.
+TODO: sending hpack headers does not use huffman encoding or dynamic table management. see the following paper https://www.mew.org/~kazu/doc/paper/hpack-2017.pdf for optimizing the implementation further.
+
+The most expensive operations involve converting strings to URI instances. Unfortunately, since using URI is part of the server specification little can be done in this regard. 
+It could be instantiated lazily, but almost all handlers need access to elements.
+
+The standard JDK Headers implementation normalizes all headers by ensuring the first character is a capital letter, and the rest lowercase. A better solution would be to use all lowercase to match http2, so less conversions would be required. The scheme is also more complex than needs to be. So, Handler code should be written using the same scheme:
+
+```java
+var value = request.getFirst("Content-length");
+
+vs
+
+var value = request.getFirst("content-length");
+```
+
+for optimal performance.
 
 
