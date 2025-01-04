@@ -20,6 +20,11 @@ public class OpenAddressMap<K,V> {
     private int used;
     private Entry[] entries;
 
+    private static int hash(int hash) {
+        return hash;
+        // return hash ^ (hash>>>16);
+    }
+
     public OpenAddressMap(int capacity) {
         // round up to next power of 2
         capacity--;
@@ -40,7 +45,7 @@ public class OpenAddressMap<K,V> {
             resize();
         }
 
-        int index = key.hashCode() & mask;
+        int index = hash(key.hashCode()) & mask;
         int start = index;
         int sentinel = -1;
         Entry entry;
@@ -58,7 +63,7 @@ public class OpenAddressMap<K,V> {
             index = (index + 1) & mask;
             if (index == start) {
                 resize();
-                index = key.hashCode() & mask;
+                index = hash(key.hashCode()) & mask;
                 start = index;
             }
         }
@@ -83,7 +88,7 @@ public class OpenAddressMap<K,V> {
     }
 
     public V get(K key) {
-        int index = key.hashCode() & mask;
+        int index = hash(key.hashCode()) & mask;
         int start = index;
         Entry entry;
         while ((entry = entries[index]) != null) {
@@ -113,6 +118,29 @@ public class OpenAddressMap<K,V> {
             if (entry != null && entry.value != null) {
                 action.accept((K)entry.key,(V)entry.value);
             }
+        }
+    }
+    public Iterable<K> keys() {
+        return () -> new KeyIterator();
+    }
+
+    private class KeyIterator implements java.util.Iterator<K> {
+        private int index = 0;
+
+        @Override
+        public boolean hasNext() {
+            while (index < entries.length) {
+                if (entries[index] != null && entries[index].value != null) {
+                    return true;
+                }
+                index++;
+            }
+            return false;
+        }
+
+        @Override
+        public K next() {
+            return (K) entries[index++].key;
         }
     }
 }

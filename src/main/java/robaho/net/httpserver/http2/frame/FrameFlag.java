@@ -1,9 +1,5 @@
 package robaho.net.httpserver.http2.frame;
 
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Set;
-
 import robaho.net.httpserver.http2.HTTP2Exception;
 
 /**
@@ -11,78 +7,81 @@ import robaho.net.httpserver.http2.HTTP2Exception;
  */
 public enum FrameFlag {
 
-	END_STREAM((byte)0x1), 
-	ACK((byte)0x1), 
-	END_HEADERS((byte)0x4), 
-	PADDED((byte)0x8), 
-	PRIORITY((byte)0x20);
+    END_STREAM((byte) 0x1),
+    ACK((byte) 0x1),
+    END_HEADERS((byte) 0x4),
+    PADDED((byte) 0x8),
+    PRIORITY((byte) 0x20);
 
-	private final byte value;
-
-	FrameFlag(byte value) {
-		this.value = value;
-	}
-
+    private final byte value;
+    private static final byte MASK = (byte) (END_STREAM.value | END_HEADERS.value | PADDED.value | PRIORITY.value);
     private static final FrameFlag[] _values = FrameFlag.values();
 
-    public static final Set<FrameFlag> NONE = Collections.unmodifiableSet(EnumSet.noneOf(FrameFlag.class));
+    FrameFlag(byte value) {
+        this.value = value;
+    }
 
-	public byte getValue() {
-		return value;
-	}
+    public static final FlagSet NONE = new FlagSet(0,false);
 
-	public static Set<FrameFlag> getEnumSet(byte value, FrameType type) throws HTTP2Exception {
-        if(value==0) {
+    public byte getValue() {
+        return value;
+    }
+
+    public static FlagSet getEnumSet(byte value, FrameType type) throws HTTP2Exception {
+        if (value == 0) {
             return NONE;
         }
+        return new FlagSet(value & MASK, type == FrameType.SETTINGS || type == FrameType.PING);
+    }
 
-		// Empty EnumSet
-		EnumSet<FrameFlag> result = EnumSet.noneOf(FrameFlag.class);
+    public static class FlagSet {
 
-		// Check if the first bit is set
-		if((value & 1)  == 1)
-		{
-			// for SETTING and PING frames the first bit indicates whether the frame is ACK
-			if(type == FrameType.SETTINGS || type == FrameType.PING)
-			{
-				result.add(FrameFlag.ACK);
-			}
-			else
-			{
-				result.add(FrameFlag.END_STREAM);
-			}
-			
-			// reset the first bit
-			value = (byte)(value ^ 1);
-		}
+        private final int value;
+        private final boolean isAck;
 
-		// For each flag in FrameFlag
-		for (FrameFlag flag : _values) {
-			// Check whether the flag bit is set
-			if ((value & flag.value) != 0) {
-				result.add(flag);
-				
-				// reset the flag bit
-				value = (byte)(value ^ flag.value);
-			}
-		}
-		
-		if(value != 0) {
-            // Unknown bit flag is set, according to the spec we should ignore it
-			// throw new HTTP2Exception(HTTP2ErrorCode.CONNECT_ERROR, "Unknown bit flag is set: " + value);
+        FlagSet(int value, boolean isAck) {
+            this.value = value;
+            this.isAck = isAck;
         }
 
-		return result;
-	}
-	
-	public static byte getValue(Set<FrameFlag> flags) {
+        public byte value() {
+            return (byte) value;
+        }
+        public boolean contains(FrameFlag flag) {
+            return (value & flag.value) == flag.value;
+        }
+        public static FlagSet of(FrameFlag... flags) {
+            int value = 0;
+            boolean isAck = false;
+            for (FrameFlag flag : flags) {
+                value |= flag.value;
+                if (flag == ACK) {
+                    isAck = true;
+                }
+            }
+            return new FlagSet(value, isAck);
+        }
 
-		byte result = 0;
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder("[");
+            var tmp = this.value;
 
-		for (FrameFlag flag : flags) {
-			result = (byte) (result | flag.getValue());
-		}
-
-		return result;
-	}
+            if ((tmp & 1) == 1) {
+                sb.append(isAck ? "ACK" : "END_STREAM");
+                // reset the first bit
+                tmp = (byte) (tmp ^ 1);
+            }
+            for (FrameFlag flag : FrameFlag._values) {
+                if ((tmp & flag.value) == flag.value) {
+                    if(!sb.isEmpty()) {
+                        sb.append(",");
+                    }
+                    sb.append(flag);
+                }
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+    }
 }

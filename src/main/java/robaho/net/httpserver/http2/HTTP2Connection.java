@@ -30,6 +30,7 @@ import robaho.net.httpserver.http2.frame.BaseFrame;
 import robaho.net.httpserver.http2.frame.ContinuationFrame;
 import robaho.net.httpserver.http2.frame.DataFrame;
 import robaho.net.httpserver.http2.frame.FrameFlag;
+import robaho.net.httpserver.http2.frame.FrameFlag.FlagSet;
 import robaho.net.httpserver.http2.frame.FrameHeader;
 import robaho.net.httpserver.http2.frame.FrameSerializer;
 import robaho.net.httpserver.http2.frame.FrameType;
@@ -373,7 +374,7 @@ public class HTTP2Connection {
 
     public void sendSettingsAck() throws IOException {
         try {
-            byte[] frame = FrameHeader.encode(0, FrameType.SETTINGS, EnumSet.of(FrameFlag.ACK), 0);
+            byte[] frame = FrameHeader.encode(0, FrameType.SETTINGS, FlagSet.of(FrameFlag.ACK), 0);
             HTTP2Connection.this.writeFrame(frame);
         } finally {
             logger.log(Level.TRACE, () -> "sent Settings Ack");

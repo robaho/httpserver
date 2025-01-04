@@ -511,7 +511,7 @@ class ServerImpl {
                 http2.sendMySettings();
                 http2.handle();
             } catch (HTTP2Exception ex) {
-                logger.log(Level.WARNING, "ServerImpl http2 protocol exception "+http2, ex.getMessage());
+                logger.log(Level.WARNING, "ServerImpl http2 protocol exception "+http2,ex);
             } catch (EOFException | SocketException ex) {
                 logger.log(Level.DEBUG, "end of stream "+http2);
             } catch (Exception ex) {

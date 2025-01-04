@@ -8,6 +8,7 @@ import java.util.EnumSet;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
 import robaho.net.httpserver.http2.Utils;
+import robaho.net.httpserver.http2.frame.FrameFlag.FlagSet;
 
 /**
  * [rfc7540 Section 6.2] The HEADERS frame (type=0x1) is used to open a stream
@@ -165,7 +166,7 @@ public class HeadersFrame extends BaseFrame {
     @Override
     public void writeTo(OutputStream os) throws IOException {
         byte[] buffer = getHeaderBlock();
-        FrameHeader.writeTo(os, buffer.length, FrameType.HEADERS, EnumSet.of(FrameFlag.END_HEADERS), getHeader().getStreamIdentifier());
+        FrameHeader.writeTo(os, buffer.length, FrameType.HEADERS, FlagSet.of(FrameFlag.END_HEADERS), getHeader().getStreamIdentifier());
         os.write(buffer);
         os.flush();
     }

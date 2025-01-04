@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
+import java.util.Collection;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -17,12 +17,17 @@ import com.sun.net.httpserver.Headers;
 import robaho.net.httpserver.http2.frame.FrameFlag;
 import robaho.net.httpserver.http2.frame.FrameHeader;
 import robaho.net.httpserver.http2.Utils;
+import robaho.net.httpserver.http2.frame.FrameFlag.FlagSet;
 import robaho.net.httpserver.http2.frame.FrameType;
 
 public class HPackContext {
     private final List<HTTP2HeaderField> dynamicTable = new ArrayList(1024);
 
     public HPackContext() {
+    }
+
+    public static Collection<String> getStaticHeaderNames() {
+        return RFC7541Parser.getStaticHeaderNames();
     }
 
     public HTTP2HeaderField getHeaderField(int index) {
@@ -214,7 +219,7 @@ public class HPackContext {
         // System.out.println("HPACK.writeHeaderFrame: wrote header frame, length: " + buffer.length + ", streamId: " + streamId);
     }
 
-    private static final EnumSet<FrameFlag> END_OF_HEADERS = EnumSet.of(FrameFlag.END_HEADERS);
+    private static final FlagSet END_OF_HEADERS = FlagSet.of(FrameFlag.END_HEADERS);
 
     public static List<byte[]> encodeHeadersFrame(Headers headers,int streamId) {
         byte[] buffer = encodeHeaders(headers);
@@ -237,7 +242,7 @@ public class HPackContext {
                 }
             }
         });
-        return Utils.combineByteArrays(List.of(Utils.combineByteArrays(pseudo),Utils.combineByteArrays(fields)));
+        return Utils.combineByteArrays(pseudo,fields);
     }
 
     private static byte[] encodeHeader(String name, String value) {
@@ -397,6 +402,10 @@ class RFC7541Parser {
 
     public static Integer getIndex(String name) {
         return STATIC_HEADER_NAME_TO_INDEX.get(name);
+    }
+    
+    public static Collection<String> getStaticHeaderNames() {
+        return STATIC_HEADER_NAME_TO_INDEX.keySet();
     }
 
     public static HTTP2HeaderField getHeaderField(int index) {

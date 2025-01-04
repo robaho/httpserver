@@ -24,6 +24,7 @@ import robaho.net.httpserver.http2.hpack.HPackContext;
 import robaho.net.httpserver.http2.frame.BaseFrame;
 import robaho.net.httpserver.http2.frame.DataFrame;
 import robaho.net.httpserver.http2.frame.FrameFlag;
+import robaho.net.httpserver.http2.frame.FrameFlag.FlagSet;
 import robaho.net.httpserver.http2.frame.FrameHeader;
 import robaho.net.httpserver.http2.frame.FrameType;
 import robaho.net.httpserver.http2.frame.ResetStreamFrame;
@@ -210,7 +211,7 @@ public class HTTP2Stream {
     }
 
     class Http2OutputStream extends OutputStream {
-        private static final EnumSet<FrameFlag> END_STREAM = EnumSet.of(FrameFlag.END_STREAM);
+        private static final FlagSet END_STREAM = FlagSet.of(FrameFlag.END_STREAM);
 
         private final int streamId;
         private final int max_frame_size;

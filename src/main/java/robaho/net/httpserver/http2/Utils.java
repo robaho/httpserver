@@ -82,4 +82,28 @@ public class Utils {
 
         return combined;
     }
+    public static byte[] combineByteArrays(List<byte[]> array1,List<byte[]> array2) {
+        int totalLength = 0;
+        for (byte[] block : array1) {
+            totalLength += block.length;
+        }
+        for (byte[] block : array2) {
+            totalLength += block.length;
+        }
+        if(totalLength==0) return EMPTY;
+
+        byte[] combined = new byte[totalLength];
+
+        int offset = 0;
+        for (byte[] block : array1) {
+            System.arraycopy(block, 0, combined, offset, block.length);
+            offset += block.length;
+        }
+        for (byte[] block : array2) {
+            System.arraycopy(block, 0, combined, offset, block.length);
+            offset += block.length;
+        }
+
+        return combined;
+    }
 }

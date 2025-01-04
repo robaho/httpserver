@@ -3,8 +3,8 @@ package robaho.net.httpserver.http2.hpack;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
+import robaho.net.httpserver.BloomSet;
 import robaho.net.httpserver.OpenAddressMap;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
@@ -15,9 +15,9 @@ import robaho.net.httpserver.http2.HTTP2Exception;
  * design
  */
 public class HeaderFields implements Iterable<HTTP2HeaderField> {
-    private static final Set<String> prohibitedHeaderFields = Set.of("connection");
-    private static final Set<String> requiredHeaderFields = Set.of(":path",":method",":scheme");
-    private static final Set<String> pseudoHeadersIn = Set.of(":authority", ":method", ":path", ":scheme");
+    private static final BloomSet prohibitedHeaderFields = BloomSet.of("connection");
+    private static final BloomSet requiredHeaderFields = BloomSet.of(":path",":method",":scheme");
+    private static final BloomSet pseudoHeadersIn = BloomSet.of(":authority", ":method", ":path", ":scheme");
 
     private final List<HTTP2HeaderField> fields = new ArrayList();
     private final OpenAddressMap pseudoHeaders = new OpenAddressMap(8);
@@ -70,7 +70,7 @@ public class HeaderFields implements Iterable<HTTP2HeaderField> {
      * perform the multi-field validation of the collection of header fields
      */
     public void validate() throws HTTP2Exception {
-        for(var fieldName : requiredHeaderFields) {
+        for(var fieldName : requiredHeaderFields.values()) {
             var ph = pseudoHeaders.get(fieldName);
             if(ph==null || isEmpty(((HTTP2HeaderField)ph).getValue())) {
                 throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,"missing required header field "+fieldName);

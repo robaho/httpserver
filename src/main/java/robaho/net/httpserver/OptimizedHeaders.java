@@ -12,7 +12,11 @@ import java.util.function.BiConsumer;
 
 import com.sun.net.httpserver.Headers;
 
+import robaho.net.httpserver.http2.hpack.HPackContext;
+
 public class OptimizedHeaders extends Headers {
+    private static final BloomSet commonKeys = BloomSet.of(HPackContext.getStaticHeaderNames().stream().map(s -> (Character.toUpperCase(s.charAt(0))+s.substring(1))).toArray(String[]::new));
+
     private final OpenAddressMap<String,Object> map;
     public OptimizedHeaders() {
         super();
@@ -61,9 +65,11 @@ public class OptimizedHeaders extends Headers {
      * First {@code char} upper case, rest lower case.
      * key is presumed to be {@code ASCII}.
      */
-    private String normalize(String key) {
+    private static String normalize(String key) {
         int len = key.length();
         if(len==0) return key;
+
+        if(commonKeys.contains(key)) return key;
 
         int i=0;
 
@@ -72,11 +78,11 @@ public class OptimizedHeaders extends Headers {
             if (c == '\r' || c == '\n')
                 throw new IllegalArgumentException("illegal character in key");
             if(i==0) {
-                if (Character.isLowerCase(c)) {
+                if (c >= 'a' && c <= 'z') {
                     break;
                 }
             } else {
-                if (Character.isUpperCase(c)) {
+                if (c >= 'A' && c <= 'Z') {
                     break;
                 }
             }

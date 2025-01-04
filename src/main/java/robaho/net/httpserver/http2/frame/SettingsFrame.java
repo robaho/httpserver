@@ -5,10 +5,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
+import robaho.net.httpserver.http2.frame.FrameFlag.FlagSet;
 
 public class SettingsFrame extends BaseFrame {
 
@@ -18,7 +18,7 @@ public class SettingsFrame extends BaseFrame {
 	 * SettingsFrame Constructor which calls the parameterized constructor
 	 */
 	public SettingsFrame() {
-		this(new FrameHeader(0, FrameType.SETTINGS, EnumSet.of(FrameFlag.ACK) , 0));
+		this(new FrameHeader(0, FrameType.SETTINGS, FlagSet.of(FrameFlag.ACK) , 0));
 	}
 
 	public SettingsFrame(FrameHeader header) {

@@ -8,6 +8,7 @@ import java.util.List;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
 import robaho.net.httpserver.http2.Utils;
+import robaho.net.httpserver.http2.frame.FrameFlag.FlagSet;
 
 public class PingFrame extends BaseFrame {
     public final byte[] body;
@@ -21,7 +22,7 @@ public class PingFrame extends BaseFrame {
         body = new byte[8];
     }
     public PingFrame(PingFrame toBeAcked) {
-        super(new FrameHeader(toBeAcked.body.length,FrameType.PING,EnumSet.of(FrameFlag.ACK),0));
+        super(new FrameHeader(toBeAcked.body.length,FrameType.PING,FlagSet.of(FrameFlag.ACK),0));
         body = toBeAcked.body;
     }
 
