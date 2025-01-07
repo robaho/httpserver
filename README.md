@@ -42,9 +42,7 @@ or the service loader will automatically find it when the jar is placed on the c
 
 ## performance
 
-** updated 11/22/2024: retested using JDK 23. The results for the JDK version dropped dramatically because I was able to resolve the source of the errors (incorrect network configuration) - and now the robaho version is more than 10x faster.
-
-This version performs more than **10x** better than the JDK version when tested using the [Tech Empower Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver) on an identical hardware/work setup with the same JDK 23 version.<sup>1</sup>
+This verson performs more than **10x** better than the JDK version when tested using the [Tech Empower Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver) on an identical hardware/work setup with the same JDK 23 version.<sup>1</sup>
 
 The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-wrk)<sup>2</sup>
 
