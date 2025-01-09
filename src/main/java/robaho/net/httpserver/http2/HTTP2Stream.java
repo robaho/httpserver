@@ -6,18 +6,15 @@ import java.io.OutputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
-import java.util.EnumSet;
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantLock;
 
 import com.sun.net.httpserver.Headers;
 
-import robaho.net.httpserver.NoSyncBufferedInputStream;
 import robaho.net.httpserver.NoSyncBufferedOutputStream;
 import robaho.net.httpserver.OptimizedHeaders;
 import robaho.net.httpserver.http2.hpack.HPackContext;
@@ -37,11 +34,13 @@ public class HTTP2Stream {
 
     // needs to be accessible for connection to adjust based on SettingsFrame
     final AtomicLong sendWindow = new AtomicLong(65535);
+    private final AtomicLong receiveWindow = new AtomicLong(65535);
+    private final int initialWindowSize;
 
     private final HTTP2Connection connection;
     private final Logger logger;
     private final OutputStream outputStream;
-    private final Pipe pipe;
+    private final DataIn dataIn;
     private final HTTP2Connection.StreamHandler handler;
     private final Headers requestHeaders;
     private final Headers responseHeaders = new OptimizedHeaders(16);
@@ -50,6 +49,7 @@ public class HTTP2Stream {
     private volatile Thread thread;
     private volatile boolean streamOpen = true;
     private volatile boolean halfClosed = false;
+    private volatile AtomicBoolean handlingRequest = new AtomicBoolean(false);
 
     private long dataInSize = 0;
 
@@ -59,14 +59,21 @@ public class HTTP2Stream {
         this.logger = connection.logger;
         this.requestHeaders = requestHeaders;
         this.handler = handler;
-        this.pipe = new Pipe();
+        this.dataIn = new DataIn();
         this.outputStream = new NoSyncBufferedOutputStream(new Http2OutputStream(streamId));
         var setting = connection.getRemoteSettings().get(SettingIdentifier.SETTINGS_INITIAL_WINDOW_SIZE);
         if(setting!=null) {
-            sendWindow.addAndGet((int)(setting.value-65535));
+            sendWindow.set((int)(setting.value));
+        }
+        setting = connection.getLocalSettings().get(SettingIdentifier.SETTINGS_INITIAL_WINDOW_SIZE);
+        if(setting!=null) {
+            receiveWindow.set((int)(setting.value));
+            initialWindowSize = (int)setting.value;
+        } else {
+            initialWindowSize = 65535;
         }
         if(logger.isLoggable(Level.TRACE)) {
-            logger.log(Level.TRACE,() -> "new stream, window size "+sendWindow.get()+" on stream "+streamId);
+            logger.log(Level.TRACE,() -> "new stream, send window size "+sendWindow.get()+", receive window size "+receiveWindow.get()+" on stream "+streamId);
         }
     }
 
@@ -84,7 +91,13 @@ public class HTTP2Stream {
 
     @Override
     public String toString() {
-        return connection.toString()+", stream "+streamId;
+        return connection.httpConnection.toString()+" stream "+streamId;
+    }
+
+    public void debug() {
+        logger.log(Level.INFO,connection.toString()+", stream "+streamId+" open "+streamOpen+" half closed "+halfClosed+", thread "+thread);
+        logger.log(Level.INFO,connection.toString()+", stream "+streamId+" data in size "+dataInSize+" expected "+expectedSize());
+        logger.log(Level.INFO,""+Arrays.toString(thread.getStackTrace()));
     }
 
     public boolean isOpen() {
@@ -94,6 +107,13 @@ public class HTTP2Stream {
         return halfClosed;
     }
 
+    private long expectedSize() {
+        if(requestHeaders.containsKey("Content-length")) {
+            return Long.parseLong(requestHeaders.getFirst("Content-length"));
+        }
+        return -1;
+    }
+
     public void close() {
         streamOpen = false;
         halfClosed = true;
@@ -101,9 +121,10 @@ public class HTTP2Stream {
         if(connection.http2Streams.put(streamId,null)==null) {
             return;
         }
+        logger.log(Level.TRACE,() -> "closing stream "+streamId);
 
         try {
-            pipe.close();
+            dataIn.close();
             outputStream.close();
             if(thread!=null)
                 thread.interrupt();
@@ -124,6 +145,7 @@ public class HTTP2Stream {
             if(halfClosed) {
                 throw new HTTP2Exception(HTTP2ErrorCode.STREAM_CLOSED);
             }
+
             performRequest(frame.getHeader().getFlags().contains(FrameFlag.END_STREAM));
             break;
         case DATA:
@@ -135,17 +157,16 @@ public class HTTP2Stream {
             if(!streamOpen) {
                 throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR);
             }
-            pipe.getOutputStream().write(dataFrame.body);
+            dataIn.enqueue(dataFrame.body);
             dataInSize += dataFrame.body.length;
             if (dataFrame.getHeader().getFlags().contains(FrameFlag.END_STREAM)) {
-                if(requestHeaders.containsKey("Content-length")) {
-                    if(dataInSize!=Long.parseLong(requestHeaders.getFirst("Content-length"))) {
-                        connection.sendResetStream(HTTP2ErrorCode.PROTOCOL_ERROR, streamId);
-                        close();
-                        break;
-                    }
+                long expected = expectedSize();
+                if(expected!=-1 && dataInSize!=expected) {
+                    connection.sendResetStream(HTTP2ErrorCode.PROTOCOL_ERROR, streamId);
+                    close();
+                    break;
                 }
-                pipe.closeOutput();
+                dataIn.close();
                 halfClosed = true;
             }
             break;
@@ -172,15 +193,19 @@ public class HTTP2Stream {
         }
     }
 
-    private void performRequest(boolean halfClosed) throws IOException {
+    private void performRequest(boolean halfClosed) throws IOException, HTTP2Exception {
+        if(!handlingRequest.compareAndSet(false, true)) {
+            throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,"already received headers for stream "+streamId);
+        }
         connection.httpConnection.requestCount.incrementAndGet();
         connection.requestsInProgress.incrementAndGet();
+        connection.stats.activeStreams.incrementAndGet();
 
-        InputStream in = halfClosed ? InputStream.nullInputStream() : pipe.getInputStream();
+        InputStream in = halfClosed ? InputStream.nullInputStream() : dataIn;
         
         if(halfClosed) {
             this.halfClosed = true;
-            pipe.closeOutput();
+            dataIn.close();
         }
 
         handler.getExecutor().execute(() -> {
@@ -188,18 +213,19 @@ public class HTTP2Stream {
                 try {
                     handler.handleStream(this,in,outputStream);
                 } catch (IOException ex) {
+                    logger.log(Level.DEBUG,"io exception on stream "+streamId,ex);
                     close();
                 }
         });
     }
     public void writeResponseHeaders() throws IOException {
-        if(!headersSent.compareAndSet(false,true))
-            return;
-        connection.lock();
-        try {
-            HPackContext.writeHeaderFrame(responseHeaders,connection.outputStream,streamId);
-        } finally {
-            connection.unlock();
+        if(headersSent.compareAndSet(false,true)) {
+            connection.lock();
+            try {
+                HPackContext.writeHeaderFrame(responseHeaders,connection.outputStream,streamId);
+            } finally {
+                connection.unlock();
+            }
         }
     }
     public InetSocketAddress getLocalAddress() {
@@ -216,7 +242,6 @@ public class HTTP2Stream {
         private final int streamId;
         private final int max_frame_size;
         private boolean closed;
-        private long pauses = 0;
 
         public Http2OutputStream(int streamId) {
             this.streamId = streamId;
@@ -236,18 +261,20 @@ public class HTTP2Stream {
 
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
+            connection.stats.bytesSent.addAndGet(len);
             // test outside of lock so other streams can progress
             while(sendWindow.get()<=0 && !connection.isClosed()) {
-                pauses++;
+                connection.stats.pauses.incrementAndGet();
                 LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
             }
             writeResponseHeaders();
             while(len>0) {
                 int _len = Math.min(Math.min(len,max_frame_size),(int)Math.min(connection.sendWindow.get(),sendWindow.get()));
                 if(_len<=0) {
-                    pauses++;
+                    connection.stats.pauses.incrementAndGet();
                     connection.lock();
                     try {
+                        connection.stats.flushes.incrementAndGet();
                         connection.outputStream.flush();
                     } finally {
                         connection.unlock();
@@ -269,6 +296,7 @@ public class HTTP2Stream {
                 try {
                     FrameHeader.writeTo(connection.outputStream, _len, FrameType.DATA, FrameFlag.NONE, streamId);
                     connection.outputStream.write(b,off,_len);
+                    connection.stats.framesSent.incrementAndGet();
                 } finally {
                     connection.unlock();
                 }
@@ -287,71 +315,55 @@ public class HTTP2Stream {
         @Override
         public void close() throws IOException {
             if(closed) return;
-            if(pauses>0)
-                logger.log(Level.INFO,() -> "sending stream window exhausted "+pauses+" on stream "+streamId);
             try {
                 if(connection.isClosed()) {
-                    if(!headersSent.get()) {
+                    if(headersSent.compareAndSet(false,true)) {
                         logger.log(Level.WARNING,"stream connection is closed and headers not sent on stream "+streamId);
                     }
                     return;
                 }
-                connection.requestsInProgress.decrementAndGet();
                 writeResponseHeaders();
                 connection.lock();
+                boolean lastRequest = connection.requestsInProgress.decrementAndGet() == 0;
                 try {
                     FrameHeader.writeTo(connection.outputStream, 0, FrameType.DATA, END_STREAM, streamId);
-                    if(connection.requestsInProgress.get()<=0) {
+                    connection.stats.framesSent.incrementAndGet();
+                    if(lastRequest) {
                         connection.outputStream.flush();
+                        connection.stats.flushes.incrementAndGet();
                     }
                 } finally {
                     connection.unlock();
                 }
-                // connection.enqueue(header);
             } finally {
+                connection.stats.activeStreams.decrementAndGet();
                 closed=true;
                 HTTP2Stream.this.close();
             }
         }
     }
 
-    // custom Pipe implementation since JDK version still uses synchronized methods which are not optimal for virtual threads
-    private static class Pipe {
-        private final InputStream inputStream;
-        private final CustomPipedOutputStream outputStream;
+    // the data InputStream passed to handlers
+    private class DataIn extends InputStream {
+        private final ConcurrentLinkedQueue<byte[]> queue = new ConcurrentLinkedQueue<>();
+        private volatile Thread reader;
+        /** offset into the top of the queue array */
+        private int offset = 0;
+        private volatile boolean closed;
 
-        public Pipe() {
-            var pipeIn = new CustomPipedInputStream();
-            this.inputStream = new NoSyncBufferedInputStream(pipeIn);
-            this.outputStream = new CustomPipedOutputStream(pipeIn);
+        public DataIn() {
         }
 
-        public InputStream getInputStream() {
-            return inputStream;
+        void enqueue(byte[] data) {
+            queue.add(data);
+            LockSupport.unpark(reader);
         }
 
-        public OutputStream getOutputStream() {
-            return outputStream;
-        }
-
+        @Override
         public void close() throws IOException {
-            inputStream.close();
-            outputStream.close();
+            closed=true;
+            LockSupport.unpark(reader);
         }
-
-        public void closeOutput() throws IOException {
-            outputStream.close();
-        }
-    }
-
-    private static class CustomPipedInputStream extends InputStream {
-        private final byte[] buffer = new byte[1024];
-        private int readPos = 0;
-        private int writePos = 0;
-        private boolean closed = false;
-        private final Lock lock = new ReentrantLock();
-        private final Condition notEmpty = lock.newCondition();
-        private final Condition notFull = lock.newCondition();
 
         private final byte[] single = new byte[1];
 
@@ -363,108 +375,47 @@ public class HTTP2Stream {
 
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
-            lock.lock();
+            int read = 0;
             try {
-                while (readPos == writePos && !closed) {
-                    try {
-                        notEmpty.await();
-                    } catch (InterruptedException e) {
-                        throw new IOException("Interrupted while waiting for data", e);
-                    }
-                }
-                if (closed && readPos == writePos) {
-                    return -1;
-                }
-
-                int available;
-                if (readPos <= writePos) {
-                    available = writePos - readPos;
-                } else {
-                    available = buffer.length - readPos;
-                }
-
-                int bytesToRead = Math.min(len, available);
-                System.arraycopy(buffer, readPos, b, off, bytesToRead);
-                readPos += bytesToRead;
-                if (readPos == buffer.length) {
-                    readPos = 0;
-                }
-                notFull.signal();
-                return bytesToRead;
-            } finally {
-                lock.unlock();
-            }
-        }
-
-        @Override
-        public void close() throws IOException {
-            lock.lock();
-            try {
-                closed = true;
-                notEmpty.signalAll();
-                notFull.signalAll();
-            } finally {
-                lock.unlock();
-            }
-        }
-    }
-
-    private static class CustomPipedOutputStream extends OutputStream {
-        private final CustomPipedInputStream inputStream;
-        private boolean closed = false;
-
-        public CustomPipedOutputStream(CustomPipedInputStream inputStream) {
-            this.inputStream = inputStream;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            write(new byte[]{(byte) b});
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            inputStream.lock.lock();
-            try {
-                while (len > 0) {
-                    while ((inputStream.writePos == inputStream.readPos - 1 || 
-                           (inputStream.writePos == inputStream.buffer.length - 1 && inputStream.readPos == 0)) 
-                           && !closed) {
-                        try {
-                            inputStream.notFull.await();
-                        } catch (InterruptedException e) {
-                            throw new IOException("Interrupted while waiting for buffer space", e);
+                reader = Thread.currentThread();
+                for(;len>0;) {
+                    byte[] data;
+                    while((data=queue.peek())==null) {
+                        if(read>0) {
+                            return read;
                         }
+                        if(closed) return -1;
+                        LockSupport.park();
+                        if(Thread.interrupted()) {
+                            throw new IOException("interrupted");
+                        }
+                    } 
+                    int available = data.length-offset;
+                    int bytesToRead = Math.min(len, available);
+                    System.arraycopy(data, offset, b, off, bytesToRead);
+                    offset+=bytesToRead;
+                    off+=bytesToRead;
+                    len-=bytesToRead;
+                    available-=bytesToRead;
+                    read+=bytesToRead;
+                    if(available==0) { // remove top buffer from queue
+                        queue.poll();
+                        offset=0;
                     }
-                    if (closed) {
-                        throw new IOException("Stream closed");
-                    }
-                    int space = inputStream.readPos <= inputStream.writePos ? 
-                               inputStream.buffer.length - inputStream.writePos : 
-                               inputStream.readPos - inputStream.writePos - 1;
-                    int bytesToWrite = Math.min(len, space);
-                    System.arraycopy(b, off, inputStream.buffer, inputStream.writePos, bytesToWrite);
-                    inputStream.writePos += bytesToWrite;
-                    if (inputStream.writePos == inputStream.buffer.length) {
-                        inputStream.writePos = 0;
-                    }
-                    off += bytesToWrite;
-                    len -= bytesToWrite;
-                    inputStream.notEmpty.signal();
                 }
+                return read;
             } finally {
-                inputStream.lock.unlock();
-            }
-        }
-
-        @Override
-        public void close() throws IOException {
-            inputStream.lock.lock();
-            try {
-                closed = true;
-                inputStream.close();
-            } finally {
-                inputStream.lock.unlock();
+                if(receiveWindow.addAndGet(-read)<initialWindowSize/2) {
+                    receiveWindow.addAndGet(initialWindowSize/2);
+                    connection.lock();
+                    try {
+                        WindowUpdateFrame frame = new WindowUpdateFrame(streamId, initialWindowSize/2);
+                        frame.writeTo(connection.outputStream);
+                        logger.log(Level.TRACE, () -> "sent stream window update, receive window "+receiveWindow.get()+" on stream "+streamId);
+                    } finally {
+                        connection.unlock();
+                    }
+                }
             }
         }
     }

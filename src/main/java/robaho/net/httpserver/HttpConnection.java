@@ -74,6 +74,10 @@ public class HttpConnection {
         connectionId = "["+socket.getLocalPort()+"."+socket.getPort()+"]";
     }
 
+    public void debug() {
+        logger.log(Level.INFO,toString()+", inRequest "+inRequest+", request count "+requestCount.get());
+    }
+
     SSLSession getSSLSession() {
         return (socket instanceof SSLSocket ssl) ? ssl.getHandshakeSession() : null;
     }
@@ -113,7 +117,7 @@ public class HttpConnection {
             if(requestCount.get()==0) {
                 logger.log(Level.WARNING, "closing connection: remote "+socket.getRemoteSocketAddress() + " with 0 requests");
             } else {
-                logger.log(Level.TRACE, () -> "Closing connection: remote " + socket.getRemoteSocketAddress());
+                logger.log(Level.TRACE, () -> "closing connection: remote " + socket.getRemoteSocketAddress());
             }
         }
 

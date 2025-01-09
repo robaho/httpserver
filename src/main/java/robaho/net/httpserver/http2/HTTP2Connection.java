@@ -8,7 +8,6 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -70,11 +69,15 @@ public class HTTP2Connection {
     final AtomicInteger receiveWindow = new AtomicInteger(65535);
     final AtomicInteger requestsInProgress = new AtomicInteger();
 
+    final HTTP2Stats stats;
+
+    private final int connectionWindowSize;
+
     private int maxConcurrentStreams = -1;
     private int highNumberStreams = 0;
 
     private final Lock lock = new ReentrantLock();
-    private AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicBoolean closed = new AtomicBoolean(false);
 
     /**
      * Constructor to instantiate HTTP2Connection object
@@ -82,19 +85,30 @@ public class HTTP2Connection {
      * @param input HTTP2Client passes the ExBufferedInputStream
      * @param output
      */
-    public HTTP2Connection(HttpConnection httpConnection, InputStream input, OutputStream output, StreamHandler handler) {
+    public HTTP2Connection(HttpConnection httpConnection, HTTP2Stats stats, InputStream input, OutputStream output, StreamHandler handler) {
         this.httpConnection = httpConnection;
         this.inputStream = input;
         this.outputStream = output;
         this.handler = handler;
+        this.stats = stats;
         this.logger = System.getLogger("robaho.net.httpserver.http2");
+
+        connectionWindowSize = ServerConfig.http2ConnectionWindowSize();
 
         localSettings.set(new SettingParameter(SettingIdentifier.SETTINGS_MAX_FRAME_SIZE, ServerConfig.http2MaxFrameSize()));
         localSettings.set(new SettingParameter(SettingIdentifier.SETTINGS_INITIAL_WINDOW_SIZE, ServerConfig.http2InitialWindowSize()));
+
         if (ServerConfig.http2MaxConcurrentStreams() != -1) {
             localSettings.set(new SettingParameter(SettingIdentifier.SETTINGS_MAX_CONCURRENT_STREAMS, ServerConfig.http2MaxConcurrentStreams()));
         }
         logger.log(Level.DEBUG, "opened http2 connection " + httpConnection + ", max concurrent streams " + ServerConfig.http2MaxConcurrentStreams());
+    }
+
+    public void debug() {
+        logger.log(Level.INFO,toString()+" receive window "+receiveWindow.get()+" send window "+sendWindow.get()+" in progress "+requestsInProgress.get());
+        for(var stream : http2Streams.values()) {
+            stream.debug();
+        }
     }
 
     void lock() {
@@ -144,6 +158,7 @@ public class HTTP2Connection {
                 outputStream.write(frame);
             }
             outputStream.flush();
+            stats.flushes.incrementAndGet();
         } finally {
             unlock();
         }
@@ -241,7 +256,7 @@ public class HTTP2Connection {
                     break;
                 case DATA:
                     DataFrame dataFrame = (DataFrame) frame;
-                    if (receiveWindow.addAndGet(-dataFrame.body.length) <= 0) {
+                    if (receiveWindow.addAndGet(-dataFrame.body.length) < connectionWindowSize/10) {
                         sendWindowUpdate();
                     }
                     if (inHeaders) {
@@ -341,10 +356,15 @@ public class HTTP2Connection {
                 http2Streams.put(streamId, targetStream);
                 lastSeenStreamId = streamId;
             } else {
-                if (streamId < lastSeenStreamId) {
-                    throw new HTTP2Exception(HTTP2ErrorCode.STREAM_CLOSED, "stream " + streamId + " is closed");
+                if (streamId <= lastSeenStreamId) {
+                    if(frame.getHeader().getType()==FrameType.WINDOW_UPDATE) {
+                        // must accept window update even if stream is closed
+                        logger.log(Level.TRACE,() -> "received WINDOW_UPDATE on closed stream "+streamId);
+                        continue;
+                    }
+                    throw new HTTP2Exception(HTTP2ErrorCode.STREAM_CLOSED, "frame "+frame.getHeader().getType()+ ", stream " + streamId + " is closed");
                 }
-                throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR, "Stream ID not in order");
+                throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,  "frame "+frame.getHeader().getType()+", stream "+streamId+" not in order");
             }
 
             targetStream.processFrame(frame);
@@ -388,17 +408,19 @@ public class HTTP2Connection {
             localSettings.forEach(setting -> frame.getSettingParameters().add(setting));
             HTTP2Connection.this.writeFrame(frame.encode());
         } finally {
-            logger.log(Level.TRACE, () -> "Sent My Settings");
+            logger.log(Level.TRACE, () -> "sent My Settings");
         }
     }
 
     public void sendWindowUpdate() throws IOException {
+        int current = receiveWindow.get();
         try {
-            receiveWindow.addAndGet(65535);
-            WindowUpdateFrame frame = new WindowUpdateFrame(0, 65535);
+            int increment = connectionWindowSize-current;
+            receiveWindow.addAndGet(increment);
+            WindowUpdateFrame frame = new WindowUpdateFrame(0, increment);
             HTTP2Connection.this.writeFrame(frame.encode());
         } finally {
-            logger.log(Level.TRACE, () -> "Sent My Settings");
+            logger.log(Level.DEBUG, () -> "sent connection window update, previous "+current+", now "+ receiveWindow.get());
         }
     }
 
@@ -431,6 +453,7 @@ public class HTTP2Connection {
     public void sendPing() throws IOException {
         PingFrame frame = new PingFrame();
         HTTP2Connection.this.writeFrame(frame.encode());
+        stats.pingsSent.incrementAndGet();
         logger.log(Level.TRACE, () -> "Sent Ping ");
     }
 

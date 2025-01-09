@@ -51,7 +51,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.LogRecord;
 
 import javax.net.ssl.SSLSocket;
@@ -68,6 +67,7 @@ import com.sun.net.httpserver.HttpsConfigurator;
 import robaho.net.httpserver.http2.HTTP2Connection;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
 import robaho.net.httpserver.http2.HTTP2Exception;
+import robaho.net.httpserver.http2.HTTP2Stats;
 import robaho.net.httpserver.http2.HTTP2Stream;
 
 /**
@@ -119,13 +119,8 @@ class ServerImpl {
     private Thread dispatcherThread;
 
     // statistics
-    private final AtomicLong connectionCount = new AtomicLong();
-    private final AtomicLong requestCount = new AtomicLong();
-    private final AtomicLong handleExceptionCount = new AtomicLong();
-    private final AtomicLong socketExceptionCount = new AtomicLong();
-    private final AtomicLong idleCloseCount = new AtomicLong();
-    private final AtomicLong replyErrorCount = new AtomicLong();
-    private final AtomicLong maxConnectionsExceededCount = new AtomicLong();
+    private final ServerStats stats = new ServerStats();
+    private final HTTP2Stats http2Stats = new HTTP2Stats();
 
     ServerImpl(HttpServer wrapper, String protocol, InetSocketAddress addr, int backlog) throws IOException {
 
@@ -156,54 +151,40 @@ class ServerImpl {
         if(Boolean.getBoolean("robaho.net.httpserver.EnableStats")) {
             createContext("/__stats",new StatsHandler());
         }
+        if(Boolean.getBoolean("robaho.net.httpserver.EnableDebug")) {
+            createContext("/__debug",new DebugHandler());
+        }
     }
 
     private class StatsHandler implements HttpHandler {
-        volatile long lastStatsTime = System.currentTimeMillis();
-        volatile long lastRequestCount = 0;
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-
-            long now = System.currentTimeMillis();
-
-            if("reset".equals(exchange.getRequestURI().getQuery())) {
-                connectionCount.set(0);
-                requestCount.set(0);
-                handleExceptionCount.set(0);
-                socketExceptionCount.set(0);
-                idleCloseCount.set(0);
-                replyErrorCount.set(0);
-                maxConnectionsExceededCount.set(0);
-                lastStatsTime = now;
-                lastRequestCount = 0;
-                exchange.sendResponseHeaders(200,-1);
-                exchange.close();
-                return;
-            }
-
-            var rc = requestCount.get();
-
             var output = 
                 (
-                "Connections: "+connectionCount.get()+"\n" +
                 "Active Connections: "+allConnections.size()+"\n" +
-                "Requests: "+rc+"\n" +
-                "Requests/sec: "+(long)((rc-lastRequestCount)/(((double)(now-lastStatsTime))/1000))+"\n"+
-                "Handler Exceptions: "+handleExceptionCount.get()+"\n"+
-                "Socket Exceptions: "+socketExceptionCount.get()+"\n"+
-                "Mac Connections Exceeded: "+maxConnectionsExceededCount.get()+"\n"+
-                "Idle Closes: "+idleCloseCount.get()+"\n"+
-                "Reply Errors: "+replyErrorCount.get()+"\n"
+                stats.stats()+
+                http2Stats.stats()
                 ).getBytes();
-
-            lastStatsTime = now;
-            lastRequestCount = rc;
 
             exchange.sendResponseHeaders(200,output.length);
             exchange.getResponseBody().write(output);
             exchange.getResponseBody().close();
         }
     }
+
+    /** log state to assist debugging */
+    private class DebugHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            logger.log(Level.INFO,"logging debug state, requestor "+exchange.getRemoteAddress());
+            for(var connection : allConnections) {
+                connection.debug();
+            }
+            Http2Exchange.debug();
+            exchange.sendResponseHeaders(200,-1);
+        }
+    }
+
 
     public void bind(InetSocketAddress addr, int backlog) throws IOException {
         if (bound) {
@@ -365,12 +346,12 @@ class ServerImpl {
                     if(logger.isLoggable(Level.TRACE)) {
                         logger.log(Level.TRACE, "accepted connection: " + s.toString());
                     }
-                    connectionCount.incrementAndGet();
+                    stats.connectionCount.incrementAndGet();
                     if (MAX_CONNECTIONS > 0 && allConnections.size() >= MAX_CONNECTIONS) {
                         // we've hit max limit of current open connections, so we go
                         // ahead and close this connection without processing it
                         try {
-                            maxConnectionsExceededCount.incrementAndGet();
+                            stats.maxConnectionsExceededCount.incrementAndGet();
                             logger.log(Level.WARNING, "closing accepted connection due to too many connections");
                             s.close();
                         } catch (IOException ignore) {
@@ -429,7 +410,7 @@ class ServerImpl {
 
                     } catch (Exception e) {
                         logger.log(Level.TRACE, "Dispatcher Exception", e);
-                        handleExceptionCount.incrementAndGet();
+                        stats.handleExceptionCount.incrementAndGet();
                         closeConnection(c);
                     }
                 } catch (IOException e) {
@@ -473,12 +454,23 @@ class ServerImpl {
         final String protocol;
 
         private static final Set<Http2Exchange> allHttp2Exchanges = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        static void debug() {
+            for(var exchange : allHttp2Exchanges) {
+                exchange.http2.debug();
+            }
+        }
 
         Http2Exchange(String protocol, HttpConnection conn) throws IOException {
             this.connection = conn;
             this.protocol = protocol;
 
-            http2 = new HTTP2Connection(conn, connection.getInputStream(), connection.getOutputStream(), this);
+            if(protocol.equals("https2")) {
+                http2Stats.sslConnections.incrementAndGet();
+            } else {
+                http2Stats.nonsslConnections.incrementAndGet();
+            }
+
+            http2 = new HTTP2Connection(conn,http2Stats,connection.getInputStream(), connection.getOutputStream(), this);
         }
 
         static TimerTask createTask() {
@@ -512,7 +504,8 @@ class ServerImpl {
                 http2.handle();
             } catch (HTTP2Exception ex) {
                 logger.log(Level.WARNING, "ServerImpl http2 protocol exception "+http2,ex);
-            } catch (EOFException | SocketException ex) {
+            } catch (IOException ex) {
+                stats.socketExceptionCount.incrementAndGet();
                 logger.log(Level.DEBUG, "end of stream "+http2);
             } catch (Exception ex) {
                 logger.log(Level.WARNING, "ServerImpl unexpected exception handling http2 connection "+http2, ex);
@@ -536,7 +529,9 @@ class ServerImpl {
         @Override
         public void handleStream(HTTP2Stream stream,InputStream in, OutputStream out) throws IOException {
             connection.requestCount.incrementAndGet();
-            requestCount.incrementAndGet();
+            stats.requestCount.incrementAndGet();
+
+            http2Stats.totalStreams.incrementAndGet();
 
             var request = stream.getRequestHeaders();
             var response = stream.getResponseHeaders();
@@ -584,7 +579,7 @@ class ServerImpl {
                 return;
             }
 
-            logger.log(Level.DEBUG,() -> "http2 request on "+connection+" "+method+" for "+uri);
+            logger.log(Level.TRACE,() -> "http2 request on "+connection+" "+method+" for "+uri);
 
             final List<Filter> sf = ctx.getSystemFilters();
             final List<Filter> uf = ctx.getFilters();
@@ -592,10 +587,16 @@ class ServerImpl {
             final Filter.Chain sc = new Filter.Chain(sf, ctx.getHandler());
             final Filter.Chain uc = new Filter.Chain(uf, new LinkHandler(sc));
 
-            if (https) {
-                uc.doFilter(new Http2ExchangeImpl(stream,uri,method,ctx,request,response,in,out));
-            } else {
-                uc.doFilter(new Http2ExchangeImpl(stream,uri,method,ctx,request,response,in,out));
+            try {
+                if (https) {
+                    uc.doFilter(new Http2ExchangeImpl(stream,uri,method,ctx,request,response,in,out));
+                } else {
+                    uc.doFilter(new Http2ExchangeImpl(stream,uri,method,ctx,request,response,in,out));
+                }
+            } catch (IOException e) {
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Dispatcher Exception on "+stream, e);
+                stats.handleExceptionCount.incrementAndGet();
             }
         }
     }
@@ -630,7 +631,7 @@ class ServerImpl {
                 } catch (SocketException e) {
                     // these are common with clients breaking connections etc
                     logger.log(Level.TRACE, "ServerImpl IOException", e);
-                    socketExceptionCount.incrementAndGet();
+                    stats.socketExceptionCount.incrementAndGet();
                     closeConnection(connection);
                     break;
                 } catch (Exception e) {
@@ -675,14 +676,14 @@ class ServerImpl {
 
             connection.inRequest = true;
 
-            if (requestLine == null) {
+            if (requestLine == null || "".equals(requestLine)) {
                 /* connection closed */
                 logger.log(Level.DEBUG, "no request line: closing");
                 closeConnection(connection);
                 return;
             }
             connection.requestCount.incrementAndGet();
-            requestCount.incrementAndGet();
+            stats.requestCount.incrementAndGet();
 
             logger.log(Level.DEBUG, () -> "Exchange request line: "+ requestLine);
             int space = requestLine.indexOf(" ");
@@ -870,7 +871,7 @@ class ServerImpl {
                 }
             } catch (IOException e) {
                 logger.log(Level.TRACE, "ServerImpl.sendReply", e);
-                replyErrorCount.incrementAndGet();
+                stats.replyErrorCount.incrementAndGet();
                 closeConnection(connection);
             }
         }
@@ -915,7 +916,7 @@ class ServerImpl {
             for (var c : allConnections) {
                 if (now- c.lastActivityTime >= IDLE_INTERVAL && !c.inRequest) {
                     logger.log(Level.DEBUG, "closing idle connection");
-                    idleCloseCount.incrementAndGet();
+                    stats.idleCloseCount.incrementAndGet();
                     closeConnection(c);
                     // idle.add(c);
                 } else if (c.noActivity && (now - c.lastActivityTime >= NEWLY_ACCEPTED_CONN_IDLE_INTERVAL)) {

@@ -52,6 +52,7 @@ public class ServerConfig {
 
     private static final int DEFAULT_HTTP2_MAX_FRAME_SIZE = 16384;
     private static final int DEFAULT_HTTP2_INITIAL_WINDOW_SIZE = 65535;
+    private static final int DEFAULT_HTTP2_CONNECTION_WINDOW_SIZE = 65535;
     private static final int DEFAULT_HTTP2_MAX_CONCURRENT_STREAMS = -1; // use -1 for no limit
 
     private static long idleTimerScheduleMillis;
@@ -79,6 +80,7 @@ public class ServerConfig {
     private static boolean http2OverNonSSL;
     private static int http2MaxFrameSize;
     private static int http2InitialWindowSize;
+    private static int http2ConnectionWindowSize;
     private static int http2MaxConcurrentStreams;
     private static boolean http2DisableFlushDelay;
 
@@ -142,6 +144,7 @@ public class ServerConfig {
 
                         http2MaxFrameSize = Integer.getInteger(pkg + ".http2MaxFrameSize", DEFAULT_HTTP2_MAX_FRAME_SIZE);
                         http2InitialWindowSize = Integer.getInteger(pkg + ".http2InitialWindowSize", DEFAULT_HTTP2_INITIAL_WINDOW_SIZE);
+                        http2ConnectionWindowSize = Integer.getInteger(pkg + ".http2ConnectionWindowSize", DEFAULT_HTTP2_CONNECTION_WINDOW_SIZE);
 
                         http2MaxConcurrentStreams = Integer.getInteger(pkg + ".http2MaxConcurrentStreams", DEFAULT_HTTP2_MAX_CONCURRENT_STREAMS);
                         http2DisableFlushDelay = Boolean.getBoolean(pkg + ".http2DisableFlushDelay");
@@ -248,6 +251,9 @@ public class ServerConfig {
     }
     public static int http2InitialWindowSize() {
         return http2InitialWindowSize;
+    }
+    public static int http2ConnectionWindowSize() {
+        return http2ConnectionWindowSize;
     }
     /**
      * @return the maximum number of concurrent streams per connection, or -1 for no limit

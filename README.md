@@ -240,7 +240,7 @@ Idle Closes: 0
 Reply Errors: 0
 ```
 
-The counts can be reset using `/__stats?reset`. The `requests/sec` is calculated from the previous statistics request. 
+The counts and rates for non "Total" statistics are reset with each pull of the statistics.
 
 ## maven
 
