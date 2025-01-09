@@ -61,7 +61,6 @@ public class Test {
       try (OutputStream os = exchange.getResponseBody()) {
         exchange.sendResponseHeaders(200, contentLength);
         os.write(bytes);
-        os.flush();
       }
     }
   }
