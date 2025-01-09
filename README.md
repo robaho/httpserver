@@ -248,7 +248,7 @@ The counts and rates for non "Total" statistics are reset with each pull of the 
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.17</version>
+  <version>1.0.18</version>
 </dependency>
 ```
 ## enable Http2
