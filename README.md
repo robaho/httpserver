@@ -1,44 +1,74 @@
 # httpserver
 
-A zero-dependency implementation of the JDK com.sun.net.httpserver.HttpServer specification with a few significant enhancements.
+Zero-dependency implementation of the JDK [`com.sun.net.httpserver.HttpServer` specification](https://docs.oracle.com/en/java/javase/21/docs/api/jdk.httpserver/com/sun/net/httpserver/package-summary.html) with a few significant enhancements.
 
-It adds websocket support using modified source from nanohttpd.
-
-It has basic server-side proxy support using [ProxyHandler](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/extras/ProxyHandler.java).
-
-ProxyHandler also supports tunneling proxies using CONNECT for https.
-
-It supports Http2 [RFC 9113](https://www.rfc-editor.org/rfc/rfc9113.html)
+- WebSocket support using modified source code from nanohttpd.
+- Server-side proxy support using [ProxyHandler](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/extras/ProxyHandler.java). (Tunneling proxies are also supported using CONNECT for https.)
+- HTTP/2 [RFC 9113](https://www.rfc-editor.org/rfc/rfc9113.html) support
+- Performance enhancements such as proper HTTP pipelining, optimized String parsing, etc.
 
 All async functionality has been removed. All synchronized blocks were removed in favor of other Java concurrency concepts.
 
 The end result is an implementation that easily integrates with Virtual Threads available in JDK 21 - simply set a virtual thread based ExecutorService.
 
-Improved performance by more than **10x** over the JDK implementation, using http pipelining, optimized String parsing, etc.
+Improves performance by more than **10x** over the JDK implementation.
 
 Designed for embedding with only a 90kb jar and zero dependencies.
 
 ## background
 
-The JDK httpserver implementation has no support for connection upgrades, so it is not possible to add websocket support.
+The built-in JDK httpserver implementation has no support for connection upgrades, so it is not possible to add websocket support.
 
 Additionally, the code still has a lot of async - e.g. using SSLEngine to provide SSL support - which makes it more difficult to understand and enhance.
 
-The streams based processing and thread per connection design simplifies the code substantially.
+The stream-based processing and thread-per-connection design simplifies the code substantially.
 
 ## testing
 
-Nearly all of the tests were included from the JDK so this version should be highly compliant and reliable.
+Nearly all tests were included from the JDK, so this version should be highly compliant and reliable.
 
 ## using
 
-Set the default HttpServer provider when starting the jvm:
+The JDK will automatically use `robaho.net.httpserver.DefaultHttpServerProvider` in the place of the default implementation when the jar is placed on the class/module path. If there are multiple `HttpServer` providers on the classpath, we can use the following property when starting the JVM to specify the correct one <code>-Dcom.sun.net.httpserver.HttpServerProvider=robaho.net.httpserver.DefaultHttpServerProvider</code>
 
-<code>-Dcom.sun.net.httpserver.HttpServerProvider=robaho.net.httpserver.DefaultHttpServerProvider</code>
+Alternatively, you can instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
 
-or instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
+### Example Usage
+```java
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 
-or the service loader will automatically find it when the jar is placed on the class path when using the standard HttpServer service provider.
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
+public class Test {
+
+  public static void main(String[] args) throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+    server.createContext("/", new MyHandler());
+    server.setExecutor(Executors.newVirtualThreadPerTaskExecutor()); // sets virtual thread executor
+    server.start();
+    }
+
+  static class MyHandler implements HttpHandler {
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+      String response = "This is the response";
+      byte[] bytes = response.getBytes();
+
+      // -1 means no content, 0 means unknown content length
+      var contentLength = bytes.length == 0 ? -1 : bytes.length;
+
+      try (OutputStream os = exchange.getResponseBody()) {
+        exchange.sendResponseHeaders(200, contentLength);
+        os.write(bytes);
+      }
+    }
+  }
+}
+```
 
 ## performance
 
