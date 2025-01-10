@@ -29,8 +29,11 @@ Nearly all tests were included from the JDK, so this version should be highly co
 
 ## using
 
-The JDK will automatically use `robaho.net.httpserver.DefaultHttpServerProvider` in the place of the default implementation when the jar is placed on the class/module path.
+The JDK will automatically use `robaho.net.httpserver.DefaultHttpServerProvider` in the place of the default implementation when the jar is placed on the class/module path. If there are multiple `HttpServer` providers on the classpath, we can use the following property when starting the JVM to specify the correct one <code>-Dcom.sun.net.httpserver.HttpServerProvider=robaho.net.httpserver.DefaultHttpServerProvider</code>
 
+Alternatively, you can instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
+
+### Example Usage
 ```java
 import java.io.IOException;
 import java.io.OutputStream;
@@ -66,8 +69,6 @@ public class Test {
   }
 }
 ```
-
-Alternatively, you can instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
 
 ## performance
 
