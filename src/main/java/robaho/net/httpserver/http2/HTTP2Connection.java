@@ -362,7 +362,7 @@ public class HTTP2Connection {
                         logger.log(Level.TRACE,() -> "received WINDOW_UPDATE on closed stream "+streamId);
                         continue;
                     }
-                    throw new HTTP2Exception(HTTP2ErrorCode.STREAM_CLOSED, "frame "+frame.getHeader().getType()+ ", stream " + streamId + " is closed");
+                    throw new HTTP2Exception(HTTP2ErrorCode.STREAM_CLOSED, "frame "+frame.getHeader().getType()+ ", length "+ frame.getHeader().getLength()+", stream " + streamId + " is closed");
                 }
                 throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,  "frame "+frame.getHeader().getType()+", stream "+streamId+" not in order");
             }

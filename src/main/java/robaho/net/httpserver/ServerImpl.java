@@ -574,7 +574,7 @@ class ServerImpl {
             if (ctx == null) {
                 logger.log(Level.DEBUG, "No context found for request "+uriPath+", rejecting as not found");
                 response.set(":status","404");
-                stream.writeResponseHeaders();
+                stream.writeResponseHeaders(true);
                 out.close();
                 return;
             }

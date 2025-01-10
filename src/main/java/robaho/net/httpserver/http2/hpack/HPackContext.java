@@ -18,6 +18,7 @@ import robaho.net.httpserver.OpenAddressMap;
 import robaho.net.httpserver.http2.frame.FrameFlag;
 import robaho.net.httpserver.http2.frame.FrameHeader;
 import robaho.net.httpserver.http2.Utils;
+import robaho.net.httpserver.http2.frame.FrameFlag;
 import robaho.net.httpserver.http2.frame.FrameFlag.FlagSet;
 import robaho.net.httpserver.http2.frame.FrameType;
 
@@ -210,7 +211,7 @@ public class HPackContext {
     }
 
     /** this method is optimized for a server implementation and is not suitable for generic http2 hpack header encoding */
-    public static void writeHeaderFrame(Headers headers, OutputStream outputStream, int streamId) throws IOException {
+    public static void writeHeaderFrame(Headers headers, OutputStream outputStream, int streamId,boolean closeStream) throws IOException {
         ByteArrayOutputStream fields = new ByteArrayOutputStream(256); // average http headers length is 800 bytes
 
         // ':status' is required and the only allowed outbound pseudo headers
@@ -238,7 +239,7 @@ public class HPackContext {
             }
         });
 
-        FrameHeader.writeTo(outputStream, fields.size(),FrameType.HEADERS, END_OF_HEADERS, streamId);
+        FrameHeader.writeTo(outputStream, fields.size(),FrameType.HEADERS,closeStream ? END_OF_HEADERS_AND_STREAM : END_OF_HEADERS, streamId);
         fields.writeTo(outputStream);
     }
 
@@ -275,6 +276,7 @@ public class HPackContext {
     }
 
     private static final FlagSet END_OF_HEADERS = FlagSet.of(FrameFlag.END_HEADERS);
+    private static final FlagSet END_OF_HEADERS_AND_STREAM = FlagSet.of(FrameFlag.END_HEADERS,FrameFlag.END_STREAM);
 
     public static List<byte[]> encodeHeadersFrame(Headers headers,int streamId) {
         byte[] buffer = encodeHeaders(headers);

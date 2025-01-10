@@ -88,7 +88,7 @@ public class Http2ExchangeImpl extends HttpExchange {
         }
         response.set(":status",Long.toString(rCode));
         responseCode = rCode;
-        stream.writeResponseHeaders();
+        stream.writeResponseHeaders(responseLength==-1);
     }
 
     @Override

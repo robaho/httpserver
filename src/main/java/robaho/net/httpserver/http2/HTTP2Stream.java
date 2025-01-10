@@ -49,6 +49,7 @@ public class HTTP2Stream {
     private volatile Thread thread;
     private volatile boolean streamOpen = true;
     private volatile boolean halfClosed = false;
+    private volatile boolean streamOutClosed = false;
     private volatile AtomicBoolean handlingRequest = new AtomicBoolean(false);
 
     private long dataInSize = 0;
@@ -218,16 +219,26 @@ public class HTTP2Stream {
                 }
         });
     }
-    public void writeResponseHeaders() throws IOException {
-        if(headersSent.compareAndSet(false,true)) {
+    /**
+     * @param closeStream if true the output stream is closed, and any attempts
+     * to write data to the stream will fail. This is an optimization that
+     * allows the CLOSE_STREAM bit to be set in the Headers frame, reducing the
+     * packet count.
+     */
+    public void writeResponseHeaders(boolean closeStream) throws IOException {
+        if (headersSent.compareAndSet(false, true)) {
             connection.lock();
             try {
-                HPackContext.writeHeaderFrame(responseHeaders,connection.outputStream,streamId);
+                HPackContext.writeHeaderFrame(responseHeaders, connection.outputStream, streamId, closeStream);
+                if (closeStream) {
+                    streamOutClosed = true;
+                }
             } finally {
                 connection.unlock();
             }
         }
     }
+
     public InetSocketAddress getLocalAddress() {
         return connection.getLocalAddress();
     }
@@ -267,7 +278,10 @@ public class HTTP2Stream {
                 connection.stats.pauses.incrementAndGet();
                 LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
             }
-            writeResponseHeaders();
+            writeResponseHeaders(false);
+            if(streamOutClosed) {
+                throw new IOException("output stream was closed during headers send");
+            }
             while(len>0) {
                 int _len = Math.min(Math.min(len,max_frame_size),(int)Math.min(connection.sendWindow.get(),sendWindow.get()));
                 if(_len<=0) {
@@ -322,12 +336,14 @@ public class HTTP2Stream {
                     }
                     return;
                 }
-                writeResponseHeaders();
+                writeResponseHeaders(false);
                 connection.lock();
                 boolean lastRequest = connection.requestsInProgress.decrementAndGet() == 0;
                 try {
-                    FrameHeader.writeTo(connection.outputStream, 0, FrameType.DATA, END_STREAM, streamId);
-                    connection.stats.framesSent.incrementAndGet();
+                    if(!streamOutClosed) {
+                        FrameHeader.writeTo(connection.outputStream, 0, FrameType.DATA, END_STREAM, streamId);
+                        connection.stats.framesSent.incrementAndGet();
+                    }
                     if(lastRequest) {
                         connection.outputStream.flush();
                         connection.stats.flushes.incrementAndGet();
@@ -335,6 +351,10 @@ public class HTTP2Stream {
                 } finally {
                     connection.unlock();
                 }
+                // same as http1, read all incoming frames when closing the output stream.
+                // TODO review this, as the http2 stream is bidirectional and the spec may allow the server to continue to process inbound frames
+                // after closing the outbound stream - similar to a http2 client
+                dataIn.readAllBytes();
             } finally {
                 connection.stats.activeStreams.decrementAndGet();
                 closed=true;
@@ -355,6 +375,7 @@ public class HTTP2Stream {
         }
 
         void enqueue(byte[] data) {
+            if(closed) return;
             queue.add(data);
             LockSupport.unpark(reader);
         }
