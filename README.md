@@ -21,15 +21,21 @@ The built-in JDK httpserver implementation has no support for connection upgrade
 
 Additionally, the code still has a lot of async - e.g. using SSLEngine to provide SSL support - which makes it more difficult to understand and enhance.
 
-The stream-based processing and thread-per-connection design simplifies the code substantially.
+The thread-per-connection synchronous design simplifies the code substantially.
 
-## testing
+## testing/compliance
 
-Nearly all tests were included from the JDK, so this version should be highly compliant and reliable.
+Nearly all tests from the JDK are included, so this version should be highly compliant and reliable.
+
+Additional proxy and websockets tests are included.
+
+The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
 
 ## using
 
-The JDK will automatically use `robaho.net.httpserver.DefaultHttpServerProvider` in the place of the default implementation when the jar is placed on the class/module path. If there are multiple `HttpServer` providers on the classpath, we can use the following property when starting the JVM to specify the correct one <code>-Dcom.sun.net.httpserver.HttpServerProvider=robaho.net.httpserver.DefaultHttpServerProvider</code>
+The JDK will automatically use `robaho.net.httpserver.DefaultHttpServerProvider` instead of the JDK implementation when the jar is placed on the class/module path. If there are multiple `HttpServer` providers on the classpath, the `com.sun.net.httpserver.HttpServerProvider` system property can be used to specify the correct one:
+
+Eg. <code>-Dcom.sun.net.httpserver.HttpServerProvider=robaho.net.httpserver.DefaultHttpServerProvider</code>
 
 Alternatively, you can instantiate the server directly using [this](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/DefaultHttpServerProvider.java#L33).
 
@@ -76,7 +82,7 @@ This verson performs more than **10x** better than the JDK version when tested u
 
 The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-wrk)<sup>2</sup>
 
-<sup>1</sup>_The robaho version has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
+<sup>1</sup>_The [robaho version](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver-robaho) has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
 <sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor._
 
 Performance tests against the latest Jetty version were run. The `robaho httpserver` outperformed the Jetty http2 by 3x, and http1 by 5x.
@@ -278,7 +284,7 @@ The counts and rates for non "Total" statistics are reset with each pull of the 
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>1.0.18</version>
+  <version>1.0.19</version>
 </dependency>
 ```
 ## enable Http2
@@ -291,8 +297,6 @@ Use `-Drobaho.net.httpserver.http2OverNonSSL=true` to enable Http2 on Non-SSL co
 
 See the additional Http2 options in `ServerConfig.java`
 
-The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
-
 ## performance notes
 
 Http2 performance has not been fully optimized. The http2 version is about 20-30% slower than http1. I expect this to be the case with most http2 implementations due to the complexity.
@@ -300,8 +304,8 @@ http2 outperforms http1 when sending multiple simultaneous requests from the cli
 
 TODO: sending hpack headers does not use huffman encoding or dynamic table management. see the following paper https://www.mew.org/~kazu/doc/paper/hpack-2017.pdf for optimizing the implementation further.
 
-The most expensive operations involve converting strings to URI instances. Unfortunately, since using URI is part of the server specification little can be done in this regard. 
-It could be instantiated lazily, but almost all handlers need access to elements.
+The most expensive operations involve converting strings to URI instances. Unfortunately, since using URI is part of the [HttpExchange API](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.httpserver/com/sun/net/httpserver/HttpExchange.html#getRequestURI())  little can be done in this regard. 
+It could be instantiated lazily, but almost all handlers need access to the URI components (e.g. path, query, etc.)
 
 The standard JDK Headers implementation normalizes all headers by ensuring the first character is a capital letter, and the rest lowercase. A better solution would be to use all lowercase to match http2, so less conversions would be required. The scheme is also more complex than needs to be. So, Handler code should be written using the same scheme:
 
