@@ -48,8 +48,10 @@ public class HTTP2Stream {
 
     private volatile Thread thread;
     private volatile boolean streamOpen = true;
+    // halfClosed is set when a END_STREAM is received. The streams are bidirectional.
     private volatile boolean halfClosed = false;
-    private volatile boolean streamOutClosed = false;
+    // streamOutputClosed is when the handler, either via close(), or sendResponseHeaders(code,-1) closes the output
+    private volatile boolean streamOutputClosed = false;
     private volatile AtomicBoolean handlingRequest = new AtomicBoolean(false);
 
     private long dataInSize = 0;
@@ -96,7 +98,7 @@ public class HTTP2Stream {
     }
 
     public void debug() {
-        logger.log(Level.INFO,connection.toString()+", stream "+streamId+" open "+streamOpen+" half closed "+halfClosed+", thread "+thread);
+        logger.log(Level.INFO,connection.toString()+", stream "+streamId+" open "+streamOpen+" half closed "+halfClosed+", streamOutputClosed "+streamOutputClosed+", thread "+thread);
         logger.log(Level.INFO,connection.toString()+", stream "+streamId+" data in size "+dataInSize+" expected "+expectedSize());
         logger.log(Level.INFO,""+Arrays.toString(thread.getStackTrace()));
     }
@@ -117,11 +119,11 @@ public class HTTP2Stream {
 
     public void close() {
         streamOpen = false;
-        halfClosed = true;
 
         if(connection.http2Streams.put(streamId,null)==null) {
             return;
         }
+
         logger.log(Level.TRACE,() -> "closing stream "+streamId);
 
         try {
@@ -146,8 +148,8 @@ public class HTTP2Stream {
             if(halfClosed) {
                 throw new HTTP2Exception(HTTP2ErrorCode.STREAM_CLOSED);
             }
-
-            performRequest(frame.getHeader().getFlags().contains(FrameFlag.END_STREAM));
+            halfClosed = frame.getHeader().getFlags().contains(FrameFlag.END_STREAM);
+            performRequest();
             break;
         case DATA:
             DataFrame dataFrame = (DataFrame) frame;
@@ -167,8 +169,8 @@ public class HTTP2Stream {
                     close();
                     break;
                 }
-                dataIn.close();
                 halfClosed = true;
+                dataIn.wakeupReader();
             }
             break;
         case PRIORITY:
@@ -179,6 +181,7 @@ public class HTTP2Stream {
         case RST_STREAM:
             ResetStreamFrame resetFrame = (ResetStreamFrame) frame;
             logger.log(Level.DEBUG,"received reset stream "+resetFrame.errorCode+", on stream "+streamId);
+            halfClosed = true;
             close();
             break;
         case WINDOW_UPDATE:
@@ -194,7 +197,7 @@ public class HTTP2Stream {
         }
     }
 
-    private void performRequest(boolean halfClosed) throws IOException, HTTP2Exception {
+    private void performRequest() throws IOException, HTTP2Exception {
         if(!handlingRequest.compareAndSet(false, true)) {
             throw new HTTP2Exception(HTTP2ErrorCode.PROTOCOL_ERROR,"already received headers for stream "+streamId);
         }
@@ -203,11 +206,6 @@ public class HTTP2Stream {
         connection.stats.activeStreams.incrementAndGet();
 
         InputStream in = halfClosed ? InputStream.nullInputStream() : dataIn;
-        
-        if(halfClosed) {
-            this.halfClosed = true;
-            dataIn.close();
-        }
 
         handler.getExecutor().execute(() -> {
                 thread = Thread.currentThread();
@@ -231,7 +229,7 @@ public class HTTP2Stream {
             try {
                 HPackContext.writeHeaderFrame(responseHeaders, connection.outputStream, streamId, closeStream);
                 if (closeStream) {
-                    streamOutClosed = true;
+                    streamOutputClosed = true;
                 }
             } finally {
                 connection.unlock();
@@ -279,7 +277,7 @@ public class HTTP2Stream {
                 LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
             }
             writeResponseHeaders(false);
-            if(streamOutClosed) {
+            if(streamOutputClosed) {
                 throw new IOException("output stream was closed during headers send");
             }
             while(len>0) {
@@ -340,7 +338,7 @@ public class HTTP2Stream {
                 connection.lock();
                 boolean lastRequest = connection.requestsInProgress.decrementAndGet() == 0;
                 try {
-                    if(!streamOutClosed) {
+                    if(!streamOutputClosed) {
                         FrameHeader.writeTo(connection.outputStream, 0, FrameType.DATA, END_STREAM, streamId);
                         connection.stats.framesSent.incrementAndGet();
                     }
@@ -351,10 +349,7 @@ public class HTTP2Stream {
                 } finally {
                     connection.unlock();
                 }
-                // same as http1, read all incoming frames when closing the output stream.
-                // TODO review this, as the http2 stream is bidirectional and the spec may allow the server to continue to process inbound frames
-                // after closing the outbound stream - similar to a http2 client
-                dataIn.readAllBytes();
+                dataIn.close();
             } finally {
                 connection.stats.activeStreams.decrementAndGet();
                 closed=true;
@@ -369,21 +364,26 @@ public class HTTP2Stream {
         private volatile Thread reader;
         /** offset into the top of the queue array */
         private int offset = 0;
-        private volatile boolean closed;
 
         public DataIn() {
         }
 
         void enqueue(byte[] data) {
-            if(closed) return;
             queue.add(data);
+            LockSupport.unpark(reader);
+        }
+        
+        void wakeupReader() {
             LockSupport.unpark(reader);
         }
 
         @Override
         public void close() throws IOException {
-            closed=true;
-            LockSupport.unpark(reader);
+            if(Thread.currentThread()==reader || reader == null) {
+                readAllBytes();
+            } else {
+                LockSupport.unpark(reader);
+            }
         }
 
         private final byte[] single = new byte[1];
@@ -405,7 +405,7 @@ public class HTTP2Stream {
                         if(read>0) {
                             return read;
                         }
-                        if(closed) return -1;
+                        if(halfClosed) return -1;
                         LockSupport.park();
                         if(Thread.interrupted()) {
                             throw new IOException("interrupted");
