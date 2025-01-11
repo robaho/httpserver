@@ -1,1 +1,0 @@
-mvn install:install-file -Dfile=build/libs/httpserver.jar -DgroupId=io.github.robaho -DartifactId=httpserver -Dversion=$1 -Dpackaging=jar -DgeneratePom=true
