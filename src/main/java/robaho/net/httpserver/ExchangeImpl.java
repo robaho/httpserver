@@ -433,15 +433,6 @@ class ExchangeImpl {
     void setPrincipal(HttpPrincipal principal) {
         this.principal = principal;
     }
-
-    static ExchangeImpl get(HttpExchange t) {
-        if (t instanceof HttpExchangeImpl) {
-            return ((HttpExchangeImpl) t).getExchangeImpl();
-        } else {
-            assert t instanceof HttpsExchangeImpl;
-            return ((HttpsExchangeImpl) t).getExchangeImpl();
-        }
-    }
 }
 
 /**

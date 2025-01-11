@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import jdk.test.lib.net.URIBuilder;
-import robaho.net.httpserver.HttpExchangeAccess;
 
 /**
  * @test
@@ -67,8 +66,10 @@ public class AutoCloseableHttpExchange {
                     ;
                 t.sendResponseHeaders(200, -1);
             }
-            if (!HttpExchangeAccess.isClosed(t)) {
+            try {
+                t.getResponseBody().write("somedata".getBytes());
                 exchangeCloseFail.set(true);
+            } catch (IOException expected) {
             }
             latch.countDown();
         }

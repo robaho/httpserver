@@ -27,9 +27,10 @@ package robaho.net.httpserver;
 
 import java.io.*;
 import java.net.*;
+
 import com.sun.net.httpserver.*;
 
-class HttpExchangeImpl extends HttpExchange {
+class HttpExchangeImpl extends HttpExchange implements AuthFilter.PrincipalExchange {
 
     ExchangeImpl impl;
 
@@ -105,8 +106,8 @@ class HttpExchangeImpl extends HttpExchange {
     public HttpPrincipal getPrincipal() {
         return impl.getPrincipal();
     }
-
-    ExchangeImpl getExchangeImpl() {
-        return impl;
+    @Override
+    public void setPrincipal(HttpPrincipal p) {
+        impl.setPrincipal(p);
     }
 }

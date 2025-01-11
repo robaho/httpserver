@@ -6,14 +6,16 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
+import javax.net.ssl.SSLSession;
+
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpContext;
-import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpPrincipal;
+import com.sun.net.httpserver.HttpsExchange;
 
 import robaho.net.httpserver.http2.HTTP2Stream;
 
-public class Http2ExchangeImpl extends HttpExchange {
+public class Http2ExchangeImpl extends HttpsExchange implements AuthFilter.PrincipalExchange {
     private final Headers request;
     private final Headers response;
     private final InputStream in;
@@ -21,7 +23,7 @@ public class Http2ExchangeImpl extends HttpExchange {
     private final URI uri;
     private final String method;
     private final HttpContext ctx;
-    private final HTTP2Stream stream;
+    protected final HTTP2Stream stream;
     private HttpPrincipal principal;
     private int responseCode;
 
@@ -129,5 +131,15 @@ public class Http2ExchangeImpl extends HttpExchange {
     @Override
     public HttpPrincipal getPrincipal() {
         return principal;
+    }
+
+    @Override
+    public SSLSession getSSLSession() {
+        return stream.getSSLSession();
+    }
+
+    @Override
+    public void setPrincipal(HttpPrincipal p) {
+        principal = p;
     }
 }

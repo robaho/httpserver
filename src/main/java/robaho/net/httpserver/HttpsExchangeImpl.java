@@ -37,7 +37,7 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpPrincipal;
 import com.sun.net.httpserver.HttpsExchange;
 
-class HttpsExchangeImpl extends HttpsExchange {
+class HttpsExchangeImpl extends HttpsExchange implements AuthFilter.PrincipalExchange {
 
     ExchangeImpl impl;
 
@@ -118,7 +118,8 @@ class HttpsExchangeImpl extends HttpsExchange {
         return impl.getPrincipal();
     }
 
-    ExchangeImpl getExchangeImpl() {
-        return impl;
+    @Override
+    public void setPrincipal(HttpPrincipal p) {
+        impl.setPrincipal(p);
     }
 }

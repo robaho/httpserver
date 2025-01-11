@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
+import javax.net.ssl.SSLSession;
+
 import com.sun.net.httpserver.Headers;
 
 import robaho.net.httpserver.NoSyncBufferedOutputStream;
@@ -106,8 +108,13 @@ public class HTTP2Stream {
     public boolean isOpen() {
         return streamOpen;
     }
+
     public boolean isHalfClosed() {
         return halfClosed;
+    }
+
+    public SSLSession getSSLSession() {
+        return connection.httpConnection.getSSLSession();
     }
 
     private long expectedSize() {

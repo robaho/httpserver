@@ -78,7 +78,7 @@ public class HttpConnection {
         logger.log(Level.INFO,toString()+", inRequest "+inRequest+", request count "+requestCount.get());
     }
 
-    SSLSession getSSLSession() {
+    public SSLSession getSSLSession() {
         return (socket instanceof SSLSocket ssl) ? ssl.getHandshakeSession() : null;
     }
 

@@ -28,6 +28,7 @@ package robaho.net.httpserver;
 import com.sun.net.httpserver.*;
 
 import java.io.*;
+import java.security.Principal;
 
 public class AuthFilter extends Filter {
 
@@ -61,7 +62,7 @@ public class AuthFilter extends Filter {
             Authenticator.Result r = authenticator.authenticate(t);
             if (r instanceof Authenticator.Success) {
                 Authenticator.Success s = (Authenticator.Success) r;
-                ExchangeImpl e = ExchangeImpl.get(t);
+                PrincipalExchange e = (PrincipalExchange)t;
                 e.setPrincipal(s.getPrincipal());
                 chain.doFilter(t);
             } else if (r instanceof Authenticator.Retry) {
@@ -76,5 +77,10 @@ public class AuthFilter extends Filter {
         } else {
             chain.doFilter(t);
         }
+    }
+
+    static interface PrincipalExchange {
+        public void setPrincipal(HttpPrincipal p);
+        public Principal getPrincipal();
     }
 }
