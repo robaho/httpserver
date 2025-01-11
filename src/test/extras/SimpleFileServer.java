@@ -49,7 +49,7 @@ public class SimpleFileServer {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 3) {
-            System.out.println("usage: java FileServerHandler rootDir port logfilename");
+            System.out.println("usage: java SimpleFileServer rootDir port logfilename");
             System.exit(1);
         }
         Logger logger = Logger.getLogger("com.sun.net.httpserver");
