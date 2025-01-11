@@ -13,7 +13,7 @@ The end result is an implementation that easily integrates with Virtual Threads 
 
 Improves performance by more than **10x** over the JDK implementation.
 
-Designed for embedding with only a 90kb jar and zero dependencies.
+Designed for embedding with only a 200kb jar and zero dependencies.
 
 ## background
 
@@ -74,7 +74,17 @@ public class Test {
     }
   }
 }
+
 ```
+There is a [simple file server](https://github.com/robaho/httpserver/blob/72775986b38120b30dc4bc0438d21136ff8ec192/src/test/extras/SimpleFileServer.java#L48) that can be used to for basic testing. It has download, echo, and "hello" capabilities. Use
+
+```
+gradle runSimpleFileServer
+```
+
+## logging
+
+All logging is performed using the [Java System Logger](https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/System.Logger.html)
 
 ## performance
 
@@ -307,16 +317,17 @@ TODO: sending hpack headers does not use huffman encoding or dynamic table manag
 The most expensive operations involve converting strings to URI instances. Unfortunately, since using URI is part of the [HttpExchange API](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.httpserver/com/sun/net/httpserver/HttpExchange.html#getRequestURI())  little can be done in this regard. 
 It could be instantiated lazily, but almost all handlers need access to the URI components (e.g. path, query, etc.)
 
-The standard JDK Headers implementation normalizes all headers by ensuring the first character is a capital letter, and the rest lowercase. A better solution would be to use all lowercase to match http2, so less conversions would be required. The scheme is also more complex than needs to be. So, Handler code should be written using the same scheme:
+The standard JDK Headers implementation normalizes all headers to be first character capitalized and the rest lowercase. To ensure optimum performance, client code should use the same format to avoid the normalization cost, i.e. 
 
 ```java
+Use
+
 var value = request.getFirst("Content-length");
 
-vs
+instead of
 
-var value = request.getFirst("content-length");
+var value = request.getFirst("content-length"); 
+var value = request.getFirst("CONTENT-LENGTH");
 ```
-
-for optimal performance.
 
 
