@@ -88,11 +88,11 @@ All logging is performed using the [Java System Logger](https://docs.oracle.com/
 
 ## performance
 
-This verson performs more than **10x** better than the JDK version when tested using the [Tech Empower Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver) on an identical hardware/work setup with the same JDK 23 version.<sup>1</sup>
+This version performs more than **10x** faster than the JDK version when tested using the [Tech Empower Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver) on an identical hardware/work setup with the same JDK 23 version.<sup>1</sup>
 
 The frameworks were also tested using [go-wrk](https://github.com/tsliwowicz/go-wrk)<sup>2</sup>
 
-<sup>1</sup>_The [robaho version](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver-robaho) has been submitted to the Tech Empower benchmarks project for 3-party confirmation._<br>
+<sup>1</sup>_The robaho version has been [submitted](https://github.com/TechEmpower/FrameworkBenchmarks/tree/master/frameworks/Java/httpserver-robaho) to the Tech Empower benchmarks project for 3-party confirmation._<br>
 <sup>2</sup>_`go-wrk` does not use http pipelining so, the large number of connections is the limiting factor._
 
 Performance tests against the latest Jetty version were run. The `robaho httpserver` outperformed the Jetty http2 by 3x, and http1 by 5x.
