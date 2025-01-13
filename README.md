@@ -1,3 +1,4 @@
+
 # httpserver
 
 Zero-dependency implementation of the JDK [`com.sun.net.httpserver.HttpServer` specification](https://docs.oracle.com/en/java/javase/21/docs/api/jdk.httpserver/com/sun/net/httpserver/package-summary.html) with a few significant enhancements.
@@ -30,6 +31,17 @@ Nearly all tests from the JDK are included, so this version should be highly com
 Additional proxy and websockets tests are included.
 
 The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
+
+## maven 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.robaho/httpserver.svg?label=Maven%20Central)](https://mvnrepository.com/artifact/io.avaje/avaje-jex)
+
+```xml
+<dependency>
+  <groupId>io.github.robaho</groupId>
+  <artifactId>httpserver</artifactId>
+  <version>${version}</version>
+</dependency>
+```
 
 ## using
 
@@ -85,6 +97,16 @@ gradle runSimpleFileServer
 ## logging
 
 All logging is performed using the [Java System Logger](https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/System.Logger.html)
+
+## enable Http2
+
+Http2 support is enabled via Java system properties.
+
+Use `-Drobaho.net.httpserver.http2OverSSL=true` to enable Http2 only via SSL connections.
+
+Use `-Drobaho.net.httpserver.http2OverNonSSL=true` to enable Http2 on Non-SSL connections (which requires prior knowledge). The Http2 upgrade mechanism was deprecated in RFC 9113 so it is not supported.
+
+See the additional Http2 options in `ServerConfig.java`
 
 ## performance
 
@@ -287,25 +309,6 @@ Reply Errors: 0
 ```
 
 The counts and rates for non "Total" statistics are reset with each pull of the statistics.
-
-## maven
-
-```xml
-<dependency>
-  <groupId>io.github.robaho</groupId>
-  <artifactId>httpserver</artifactId>
-  <version>1.0.19</version>
-</dependency>
-```
-## enable Http2
-
-Http2 support is enabled via Java system properties.
-
-Use `-Drobaho.net.httpserver.http2OverSSL=true` to enable Http2 only via SSL connections.
-
-Use `-Drobaho.net.httpserver.http2OverNonSSL=true` to enable Http2 on Non-SSL connections (which requires prior knowledge). The Http2 upgrade mechanism was deprecated in RFC 9113 so it is not supported.
-
-See the additional Http2 options in `ServerConfig.java`
 
 ## performance notes
 
