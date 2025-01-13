@@ -39,7 +39,7 @@ The http2 implementation passes all specification tests in [h2spec](https://gith
 <dependency>
   <groupId>io.github.robaho</groupId>
   <artifactId>httpserver</artifactId>
-  <version>${the.above.version}</version>
+  <version>1.0.19</version>
 </dependency>
 ```
 
