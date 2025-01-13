@@ -33,7 +33,7 @@ Additional proxy and websockets tests are included.
 The http2 implementation passes all specification tests in [h2spec](https://github.com/summerwind/h2spec)
 
 ## maven 
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.robaho/httpserver.svg?label=Maven%20Central)](https://mvnrepository.com/artifact/io.avaje/avaje-jex)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.robaho/httpserver.svg?label=Maven%20Central)](https://mvnrepository.com/artifact/io.github.robaho/httpserver)
 
 ```xml
 <dependency>
