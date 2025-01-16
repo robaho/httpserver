@@ -24,7 +24,6 @@
  */
 package robaho.net.httpserver;
 
-import java.io.EOFException;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 import java.io.IOException;
@@ -63,6 +62,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsParameters;
 
 import robaho.net.httpserver.http2.HTTP2Connection;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
@@ -370,6 +370,8 @@ class ServerImpl {
                         // not work, so upgrade to a SSLSocket after connection
                         SSLSocketFactory ssf = httpsConfig.getSSLContext().getSocketFactory();
                         SSLSocket sslSocket = (SSLSocket) ssf.createSocket(s, null, false);
+                        SSLConfigurator.configure(sslSocket,httpsConfig);
+
                         sslSocket.setHandshakeApplicationProtocolSelector((_sslSocket, protocols) -> {
                             if (protocols.contains("h2") && ServerConfig.http2OverSSL()) {
                                 return "h2";
@@ -377,10 +379,8 @@ class ServerImpl {
                                 return "http/1.1";
                             }
                         });
-                        sslSocket.setUseClientMode(false);
                         // the following forces the SSL handshake to complete in order to determine the negotiated protocol
                         var session = sslSocket.getSession();
-
                         if ("h2".equals(sslSocket.getApplicationProtocol())) {
                             logger.log(Level.DEBUG, () -> "http2 connection "+sslSocket.toString());
                             http2 = true;
