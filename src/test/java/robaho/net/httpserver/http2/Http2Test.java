@@ -27,7 +27,6 @@ import robaho.net.httpserver.Http2ExchangeImpl;
 import robaho.net.httpserver.LoggingFilter;
 
 @Test(enabled=false) // this is disabled since JDK HttpClient cannot perform "prior knowledge" Http2 connections over non-SSL
-
 public class Http2Test {
 
     static {
@@ -63,7 +62,7 @@ public class Http2Test {
         server.stop(0);
     }
 
-    @Test
+    @Test(enabled=false)
     public void testHttp2Request() throws InterruptedException, IOException, URISyntaxException {
         var client = HttpClient.newBuilder().version(Version.HTTP_2).build();
         var request = HttpRequest.newBuilder(new URI("http://localhost:9000"+path)).POST(HttpRequest.BodyPublishers.ofString("This is a test")).build();
