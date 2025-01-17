@@ -62,7 +62,6 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
-import com.sun.net.httpserver.HttpsParameters;
 
 import robaho.net.httpserver.http2.HTTP2Connection;
 import robaho.net.httpserver.http2.HTTP2ErrorCode;
