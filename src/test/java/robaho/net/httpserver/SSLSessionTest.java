@@ -34,7 +34,7 @@ public class SSLSessionTest {
         var ctx = new SimpleSSLContext().get();
         httpsServer.setHttpsConfigurator(new MyHttpsConfigurator (ctx));
         httpsServer.createContext("/test", (HttpExchange he) -> {
-            var sslSession = (HttpsExchange)he;
+            var sslSession = ((HttpsExchange)he).getSSLSession();
             hasSslSession = sslSession!=null;
             he.sendResponseHeaders(200,0);
             try (var os = he.getResponseBody()) {

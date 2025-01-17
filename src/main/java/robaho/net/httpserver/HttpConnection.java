@@ -79,7 +79,7 @@ public class HttpConnection {
     }
 
     public SSLSession getSSLSession() {
-        return (socket instanceof SSLSocket ssl) ? ssl.getHandshakeSession() : null;
+        return (socket instanceof SSLSocket ssl) ? ssl.getSession() : null;
     }
 
     public boolean isSSL() {
