@@ -36,25 +36,25 @@ public class OptimizedHeaders extends Headers {
     @Override
     public List<String> get(Object key) {
         Object o = map.get(normalize((String)key));
-        return o == null ? null : (o instanceof String) ? Arrays.asList((String)o) : (List<String>)o;
+        return o == null ? null : (o instanceof String s) ? List.of(s) : (List<String>)o;
     }
 
     @Override
     public List<String> put(String key, List<String> value) {
         Object o = map.put(normalize(key), value);
-        return o == null ? null : (o instanceof String) ? Arrays.asList((String)o) : (List<String>)o;
+        return o == null ? null : (o instanceof String s) ? List.of(s) : (List<String>)o;
     }
 
     @Override
     public List<String> remove(Object key) {
         Object o = map.put(normalize((String)key),null);
-        return o == null ? null : (o instanceof String) ? Arrays.asList((String)o) : (List<String>)o;
+        return o == null ? null : (o instanceof String s) ? List.of(s) : (List<String>)o;
     }
 
     @Override
     public String getFirst(String key) {
         Object o = map.get(normalize(key));
-        return o == null ? null : (o instanceof String) ? (String)o : ((List<String>)o).getFirst();
+        return o == null ? null : (o instanceof String s) ? s : ((List<String>)o).getFirst();
     }
 
     /**
@@ -93,7 +93,7 @@ public class OptimizedHeaders extends Headers {
         if (o == null) {
             map.put(normalized, value);
         } else if(o instanceof String s) {
-            map.put(normalized, new ArrayList<>(Arrays.asList(s,value)));
+            map.put(normalized, new ArrayList(List.of(s,value)));
         } else {
             ((List<String>)o).add(value);
         }
@@ -147,6 +147,6 @@ public class OptimizedHeaders extends Headers {
 
     @Override
     public void forEach(BiConsumer<? super String,? super List<String>> action) {
-        map.forEach((k,v) -> action.accept(k, (v instanceof String) ? List.of((String)v) : (List<String>)v));
+        map.forEach((k,v) -> action.accept(k, (v instanceof String s) ? List.of(s) : (List<String>)v));
     }
 }
