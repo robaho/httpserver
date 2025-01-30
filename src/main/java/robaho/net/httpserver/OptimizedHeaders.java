@@ -1,6 +1,7 @@
 package robaho.net.httpserver;
 
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -91,8 +92,8 @@ public class OptimizedHeaders extends Headers {
         Object o = map.get(normalized);
         if (o == null) {
             map.put(normalized, value);
-        } else if(o instanceof String) {
-            map.put(normalized, Arrays.asList((String)o,value));
+        } else if(o instanceof String s) {
+            map.put(normalized, new ArrayList<>(Arrays.asList(s,value)));
         } else {
             ((List<String>)o).add(value);
         }
