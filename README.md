@@ -1,7 +1,7 @@
 
 # httpserver
 
-Zero-dependency implementation of the JDK [`com.sun.net.httpserver.HttpServer` specification](https://docs.oracle.com/en/java/javase/21/docs/api/jdk.httpserver/com/sun/net/httpserver/package-summary.html) with a few significant enhancements.
+Zero-dependency implementation of the JDK `com.sun.net.httpserver.HttpServer` [specification](https://docs.oracle.com/en/java/javase/21/docs/api/jdk.httpserver/com/sun/net/httpserver/package-summary.html) with a few significant enhancements.
 
 - WebSocket support using modified source code from nanohttpd.
 - Server-side proxy support using [ProxyHandler](https://github.com/robaho/httpserver/blob/main/src/main/java/robaho/net/httpserver/extras/ProxyHandler.java). (Tunneling proxies are also supported using CONNECT for https.)
