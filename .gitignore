@@ -8,3 +8,8 @@ fileserver/
 gradlew.bat
 gradle/
 gradle/
+/target/
+.factorypath
+.classpath
+.project
+*.prefs

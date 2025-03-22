@@ -221,6 +221,7 @@ class ExchangeImpl {
     
     public void sendResponseHeaders(int rCode, long contentLen)
             throws IOException {
+        uis.close();
         final Logger logger = getServerImpl().getLogger();
         if (sentHeaders) {
             throw new IOException("headers already sent");
