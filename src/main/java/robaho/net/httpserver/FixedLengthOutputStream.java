@@ -90,7 +90,7 @@ class FixedLengthOutputStream extends FilterOutputStream {
         // if after reading the rest of the known input for this request, there is
         // more input available, http pipelining is in effect, so avoid flush, since
         // it will be flushed after processing the next request
-        if(is.getRawInputStream().available()==0) {
+        if(is.getRawInputStream().available() == 0 || t.rcode >= 400) {
             flush();
         }
 
