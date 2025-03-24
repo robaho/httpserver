@@ -98,20 +98,24 @@ abstract class LeftOverInputStream extends FilterInputStream {
      * (still bytes to be read)
      */
     public boolean drain(long l) throws IOException {
-
-        while (l > 0) {
-            if (server.isFinishing()) {
-                break;
+        try {
+            while (l > 0) {
+                if (server.isFinishing()) {
+                    break;
+                }
+                t.connection.drainingAt = ActivityTimer.now();
+                long len = readImpl(drainBuffer, 0, drainBuffer.length);
+                if (len == -1) {
+                    eof = true;
+                    return true;
+                } else {
+                    l = l - len;
+                }
             }
-            long len = readImpl(drainBuffer, 0, drainBuffer.length);
-            if (len == -1) {
-                eof = true;
-                return true;
-            } else {
-                l = l - len;
-            }
+            return false;
+        } finally {
+            t.connection.drainingAt = 0;
         }
-        return false;
     }
     public InputStream getRawInputStream() {
         return super.in;

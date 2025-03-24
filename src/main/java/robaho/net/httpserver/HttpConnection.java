@@ -59,6 +59,7 @@ public class HttpConnection {
     volatile long lastActivityTime;
     volatile boolean noActivity;
     volatile boolean inRequest;
+    volatile long drainingAt;
 
     public AtomicLong requestCount = new AtomicLong();
     private final String connectionId;
@@ -125,6 +126,13 @@ public class HttpConnection {
             return;
         }
         try {
+            if (os!=null) {
+                // see issue #19, flush before closing, in case of pending data
+                os.flush();
+            }
+        } catch(IOException ex){}
+
+        try {
             /* need to ensure temporary selectors are closed */
             if (is != null) {
                 is.close();
@@ -134,6 +142,7 @@ public class HttpConnection {
         }
         try {
             if (os != null) {
+                os.flush();
                 os.close();
             }
         } catch (IOException e) {

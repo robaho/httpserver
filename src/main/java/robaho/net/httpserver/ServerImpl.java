@@ -913,6 +913,9 @@ class ServerImpl {
             long now = ActivityTimer.now();
 
             for (var c : allConnections) {
+                if (c.drainingAt != 0 && now- c.drainingAt >= IDLE_INTERVAL / 2) {
+                    closeConnection(c);
+                }
                 if (now- c.lastActivityTime >= IDLE_INTERVAL && !c.inRequest) {
                     logger.log(Level.DEBUG, "closing idle connection");
                     stats.idleCloseCount.incrementAndGet();
