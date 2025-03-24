@@ -1,14 +1,9 @@
 package robaho.net.httpserver;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -22,7 +17,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import org.testng.annotations.Test;
 
-import static java.nio.charset.StandardCharsets.*;
+import jdk.test.lib.RawClient;
 
 /**
  * see issue #19
@@ -93,7 +88,7 @@ public class PipeliningStallTest {
             System.out.println("Server started at port "
                     + server.getAddress().getPort());
 
-            runRawSocketHttpClient(loopback, server.getAddress().getPort(), -1);
+            RawClient.runRawSocketHttpClient(loopback, server.getAddress().getPort(),someContext,"I will send all of the data", -1);
         } finally {
             System.out.println("shutting server down");
             executor.shutdown();
@@ -101,75 +96,4 @@ public class PipeliningStallTest {
         }
         System.out.println("Server finished.");
     }
-
-    static void runRawSocketHttpClient(InetAddress address, int port, int contentLength)
-            throws Exception {
-        Socket socket = null;
-        PrintWriter writer = null;
-        BufferedReader reader = null;
-        final String CRLF = "\r\n";
-        try {
-            socket = new Socket(address, port);
-            writer = new PrintWriter(new OutputStreamWriter(
-                    socket.getOutputStream()));
-            System.out.println("Client connected by socket: " + socket);
-            String body = "I will send all the data.";
-            if (contentLength <= 0) {
-                contentLength = body.getBytes(UTF_8).length;
-            }
-
-            writer.print("GET " + someContext + "/ HTTP/1.1" + CRLF);
-            writer.print("User-Agent: Java/"
-                    + System.getProperty("java.version")
-                    + CRLF);
-            writer.print("Host: " + address.getHostName() + CRLF);
-            writer.print("Accept: */*" + CRLF);
-            writer.print("Content-Length: " + contentLength + CRLF);
-            writer.print("Connection: keep-alive" + CRLF);
-            writer.print(CRLF); // Important, else the server will expect that
-            // there's more into the request.
-            writer.flush();
-            System.out.println("Client wrote request to socket: " + socket);
-            writer.print(body);
-            writer.flush();
-
-            reader = new BufferedReader(new InputStreamReader(
-                    socket.getInputStream()));
-            System.out.println("Client start reading from server:");
-            String line = reader.readLine();
-            for (; line != null; line = reader.readLine()) {
-                if (line.isEmpty()) {
-                    break;
-                }
-                System.out.println("\"" + line + "\"");
-            }
-            System.out.println("Client finished reading from server");
-        } finally {
-            // give time to the server to try & drain its input stream
-            Thread.sleep(500);
-            // closes the client outputstream while the server is draining
-            // it
-            if (writer != null) {
-                writer.close();
-            }
-            // give time to the server to trigger its assertion
-            // error before closing the connection
-            Thread.sleep(500);
-            if (reader != null)
-                try {
-                reader.close();
-            } catch (IOException logOrIgnore) {
-                logOrIgnore.printStackTrace();
-            }
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (IOException logOrIgnore) {
-                    logOrIgnore.printStackTrace();
-                }
-            }
-        }
-        System.out.println("Client finished.");
-    }
-
 }
