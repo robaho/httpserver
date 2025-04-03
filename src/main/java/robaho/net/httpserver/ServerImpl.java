@@ -634,7 +634,7 @@ class ServerImpl {
                     closeConnection(connection);
                     break;
                 } catch (Exception e) {
-                    logger.log(Level.WARNING, "ServerImpl unexpected exception", e);
+                    logger.log(Level.WARNING, "ServerImpl unexpected exception", e.getMessage());
                     // the following seems to be a better handling - to return a server internal error rather than simply
                     // closing the connection, but test cases fail
                     //
