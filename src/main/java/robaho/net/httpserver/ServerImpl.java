@@ -621,7 +621,7 @@ class ServerImpl {
 
             logger.log(Level.TRACE, () -> "exchange started "+connection.toString());
 
-            while (true) {
+            while (!connection.closed) {
                 try {
                     runPerRequest();
                     if (connection.closed) {
