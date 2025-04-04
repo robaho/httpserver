@@ -627,7 +627,7 @@ class ServerImpl {
                     if (connection.closed) {
                         break;
                     }
-                } catch (SocketException e) {
+                } catch (IOException e) {
                     // these are common with clients breaking connections etc
                     logger.log(Level.TRACE, "ServerImpl IOException", e);
                     stats.socketExceptionCount.incrementAndGet();
