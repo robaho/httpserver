@@ -83,7 +83,7 @@ public class NoSyncBufferedInputStream extends FilterInputStream {
     private void fill() throws IOException {
         pos = 0;
         count = 0;
-        int n = getInIfOpen().read(buf);
+        int n = getInIfOpen().read(getBufIfOpen());
         if (n > 0)
             count = n;
     }
