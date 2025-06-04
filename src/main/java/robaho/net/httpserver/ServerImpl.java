@@ -50,6 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.LogRecord;
 
 import javax.net.ssl.SSLSocket;
@@ -342,75 +343,20 @@ class ServerImpl {
             while (true) {
                 try {
                     Socket s = socket.accept();
-                    if(logger.isLoggable(Level.TRACE)) {
-                        logger.log(Level.TRACE, "accepted connection: " + s.toString());
-                    }
-                    stats.connectionCount.incrementAndGet();
-                    if (MAX_CONNECTIONS > 0 && allConnections.size() >= MAX_CONNECTIONS) {
-                        // we've hit max limit of current open connections, so we go
-                        // ahead and close this connection without processing it
+                    try {
+                        executor.execute(() -> {
                         try {
-                            stats.maxConnectionsExceededCount.incrementAndGet();
-                            logger.log(Level.WARNING, "closing accepted connection due to too many connections");
-                            s.close();
-                        } catch (IOException ignore) {
-                        }
-                        continue;
-                    }
-
-                    if (ServerConfig.noDelay()) {
-                        s.setTcpNoDelay(true);
-                    }
-
-                    boolean http2 = false;
-
-                    if (https) {
-                        // for some reason, creating an SSLServerSocket and setting the default parameters would
-                        // not work, so upgrade to a SSLSocket after connection
-                        SSLSocketFactory ssf = httpsConfig.getSSLContext().getSocketFactory();
-                        SSLSocket sslSocket = (SSLSocket) ssf.createSocket(s, null, false);
-                        SSLConfigurator.configure(sslSocket,httpsConfig);
-
-                        sslSocket.setHandshakeApplicationProtocolSelector((_sslSocket, protocols) -> {
-                            if (protocols.contains("h2") && ServerConfig.http2OverSSL()) {
-                                return "h2";
-                            } else {
-                                return "http/1.1";
+                            acceptConnection(s);
+                        } catch (IOException t) {
+                            logger.log(Level.ERROR, "Dispatcher Exception", t);
+                            try {
+                                s.close();
+                            } catch (IOException ex) {
                             }
-                        });
-                        // the following forces the SSL handshake to complete in order to determine the negotiated protocol
-                        var session = sslSocket.getSession();
-                        if ("h2".equals(sslSocket.getApplicationProtocol())) {
-                            logger.log(Level.DEBUG, () -> "http2 connection "+sslSocket.toString());
-                            http2 = true;
-                        } else {
-                            logger.log(Level.DEBUG, () -> "http/1.1 connection "+sslSocket.toString());
                         }
-                        s = sslSocket;
-                    }
-
-                    HttpConnection c;
-                    try {
-                        c = new HttpConnection(s);
-                    } catch (IOException e) {
-                        logger.log(Level.WARNING, "Failed to create HttpConnection", e);
-                        continue;
-                    }
-                    try {
-                        allConnections.add(c);
-
-                        if (http2) {
-                            Http2Exchange t = new Http2Exchange(protocol, c);
-                            executor.execute(t);
-                        } else {
-                            Exchange t = new Exchange(protocol, c);
-                            executor.execute(t);
-                        }
-
-                    } catch (Exception e) {
-                        logger.log(Level.TRACE, "Dispatcher Exception", e);
-                        stats.handleExceptionCount.incrementAndGet();
-                        closeConnection(c);
+                    });
+                    } catch (RejectedExecutionException e) {
+                        s.close();
                     }
                 } catch (IOException e) {
                     if (!isFinishing()) {
@@ -418,6 +364,71 @@ class ServerImpl {
                     }
                     return;
                 }
+            }
+        }
+        private void acceptConnection(Socket s) throws IOException {
+            if(logger.isLoggable(Level.TRACE)) {
+                logger.log(Level.TRACE, "accepted connection: " + s.toString());
+            }
+            stats.connectionCount.incrementAndGet();
+            if (MAX_CONNECTIONS > 0 && allConnections.size() >= MAX_CONNECTIONS) {
+                // we've hit max limit of current open connections, so we go
+                // ahead and close this connection without processing it
+                try {
+                    stats.maxConnectionsExceededCount.incrementAndGet();
+                    logger.log(Level.WARNING, "closing accepted connection due to too many connections");
+                    s.close();
+                } catch (IOException ignore) {
+                }
+                return;
+            }
+
+            if (ServerConfig.noDelay()) {
+                s.setTcpNoDelay(true);
+            }
+
+            boolean http2 = false;
+
+            if (https) {
+                // for some reason, creating an SSLServerSocket and setting the default parameters would
+                // not work, so upgrade to a SSLSocket after connection
+                SSLSocketFactory ssf = httpsConfig.getSSLContext().getSocketFactory();
+                SSLSocket sslSocket = (SSLSocket) ssf.createSocket(s, null, false);
+                SSLConfigurator.configure(sslSocket,httpsConfig);
+
+                sslSocket.setHandshakeApplicationProtocolSelector((_sslSocket, protocols) -> {
+                    if (protocols.contains("h2") && ServerConfig.http2OverSSL()) {
+                        return "h2";
+                    } else {
+                        return "http/1.1";
+                    }
+                });
+                // the following forces the SSL handshake to complete in order to determine the negotiated protocol
+                var session = sslSocket.getSession();
+                if ("h2".equals(sslSocket.getApplicationProtocol())) {
+                    logger.log(Level.DEBUG, () -> "http2 connection "+sslSocket.toString());
+                    http2 = true;
+                } else {
+                    logger.log(Level.DEBUG, () -> "http/1.1 connection "+sslSocket.toString());
+                }
+                s = sslSocket;
+            }
+
+            HttpConnection c = new HttpConnection(s);
+            try {
+                allConnections.add(c);
+
+                if (http2) {
+                    Http2Exchange t = new Http2Exchange(protocol, c);
+                    executor.execute(t);
+                } else {
+                    Exchange t = new Exchange(protocol, c);
+                    executor.execute(t);
+                }
+            } catch (Exception e) {
+                logger.log(Level.TRACE, "Dispatcher Exception", e);
+                stats.handleExceptionCount.incrementAndGet();
+                closeConnection(c);
             }
         }
     }
