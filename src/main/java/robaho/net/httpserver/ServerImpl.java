@@ -348,7 +348,7 @@ class ServerImpl {
                         try {
                             acceptConnection(s);
                         } catch (IOException t) {
-                            logger.log(Level.ERROR, "Dispatcher Exception", t);
+                            logger.log(Level.WARNING, "unable to accept connection", t);
                             try {
                                 s.close();
                             } catch (IOException ex) {
@@ -360,7 +360,7 @@ class ServerImpl {
                     }
                 } catch (IOException e) {
                     if (!isFinishing()) {
-                        logger.log(Level.ERROR, "Dispatcher Exception, terminating", e);
+                        logger.log(Level.ERROR, "socket accept failed", e);
                     }
                     return;
                 }
