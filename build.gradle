@@ -1,7 +1,8 @@
 plugins {
-    id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'java-library'
+    id 'tech.yanand.maven-central-publish' version '1.3.0'
 }
 
 repositories {
@@ -29,7 +30,7 @@ tasks.withType(Test) {
     systemProperty("robaho.net.httpserver.http2OverNonSSL","true")
     // systemProperty("robaho.net.httpserver.http2MaxConcurrentStreams","5000")
     // systemProperty("robaho.net.httpserver.http2DisableFlushDelay","true")
-    systemProperty("robaho.net.httpserver.http2OverSSL","true")
+    // systemProperty("robaho.net.httpserver.http2OverSSL","true")
     systemProperty("robaho.net.httpserver.http2OverNonSSL","true")
     // systemProperty("javax.net.debug","ssl:handshake:verbose:keymanager:trustmanager")
 }
@@ -38,7 +39,7 @@ tasks.withType(JavaExec) {
     jvmArgs += "--enable-preview"
     systemProperty("java.util.logging.config.file","logging.properties")
     systemProperty("com.sun.net.httpserver.HttpServerProvider","robaho.net.httpserver.DefaultHttpServerProvider")
-    systemProperty("robaho.net.httpserver.http2OverSSL","true")
+    // systemProperty("robaho.net.httpserver.http2OverSSL","true")
     systemProperty("robaho.net.httpserver.http2OverNonSSL","true")
     systemProperty("robaho.net.httpserver.http2InitialWindowSize","1024000")
     systemProperty("robaho.net.httpserver.http2ConnectionWindowSize","1024000000")
@@ -72,14 +73,14 @@ sourceSets {
     test {
         java {
             srcDirs = [ 
-            'src/test/extras', 
-            'src/test/java', 
-            'src/test/java_default/bugs', 
-            'src/test/java_default/HttpExchange'
+                'src/test/extras', 
+                'src/test/java', 
+                'src/test/java_default/bugs', 
+                'src/test/java_default/HttpExchange'
             ]
         }
     }
-    testMains {
+    create('testMains') {
       java {
         srcDirs = ['src/test/test_mains']
         compileClasspath = test.output + main.output + configurations.testMainsCompile
@@ -132,7 +133,7 @@ task runSingleUnitTest(type: Test) {
     outputs.upToDateWhen { false }
     dependsOn testClasses
     filter {
-        includeTestsMatching 'InputNotRead'
+        includeTestsMatching 'PipeliningStallTest'
     }
     useTestNG()
 }
@@ -181,8 +182,9 @@ task runSimpleFileServer(type: JavaExec) {
     dependsOn testClasses
     classpath sourceSets.test.runtimeClasspath
     main "SimpleFileServer"
-    args = ['fileserver','8080','fileserver/logfile.txt']
-    javaLauncher = javaToolchains.launcherFor {
+    args = ['fileserver','443','fileserver/logfile.txt']
+    // args = ['fileserver','8080','fileserver/logfile.txt']
+        javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(23)
     }
     // debugOptions {
@@ -203,7 +205,7 @@ task runAllTests(type: Test) {
 }
 
 publish {
-    dependsOn runAllTests
+    // dependsOn runAllTests
 }
 
 publishing {
@@ -254,14 +256,17 @@ publishing {
             }
         }
     }
-    repositories {
-        maven {
-        name = "OSSRH"
-        url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            credentials {
-                username = "$maven_user"
-                password = "$maven_password"
-            }            
-        }
-    }
+}
+
+mavenCentral {
+    def tokenString = "${maven_user}:${maven_password}"
+    def token = tokenString.bytes.encodeBase64().toString()
+    authToken = token
+    // Whether the upload should be automatically published or not. Use 'USER_MANAGED' if you wish to do this manually.
+    // This property is optional and defaults to 'AUTOMATIC'.
+    publishingType = 'AUTOMATIC'
+    // Max wait time for status API to get 'PUBLISHING' or 'PUBLISHED' status when the publishing type is 'AUTOMATIC',
+    // or additionally 'VALIDATED' when the publishing type is 'USER_MANAGED'.
+    // This property is optional and defaults to 60 seconds.
+    maxWait = 60
 }
