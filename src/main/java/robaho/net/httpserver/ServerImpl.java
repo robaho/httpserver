@@ -420,13 +420,13 @@ class ServerImpl {
 
                 if (http2) {
                     Http2Exchange t = new Http2Exchange(protocol, c);
-                    executor.execute(t);
+                    t.run();
                 } else {
                     Exchange t = new Exchange(protocol, c);
-                    executor.execute(t);
+                    t.run();
                 }
-            } catch (Exception e) {
-                logger.log(Level.TRACE, "Dispatcher Exception", e);
+            } catch (Throwable t) {
+                logger.log(Level.WARNING, "Dispatcher Exception", t);
                 stats.handleExceptionCount.incrementAndGet();
                 closeConnection(c);
             }
