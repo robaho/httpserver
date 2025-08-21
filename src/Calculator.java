@@ -1,6 +1,6 @@
 public class Calculator {
     public int add(int a, int b) {
-        return a + b - 5;  // different change in feature branch
+        return a + b;  // resolved logic
     }
     
 
