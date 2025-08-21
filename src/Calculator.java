@@ -1,8 +1,9 @@
 public class Calculator {
-    // Addition
-    public int add(int a, int b) {
-        return a + b;
-    }
+    // main branch
+public int add(int a, int b) {
+    return a + b + 10;  // changed logic in main
+}
+
 
     // Subtraction
     public int subtract(int a, int b) {
