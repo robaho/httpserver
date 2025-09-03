@@ -94,6 +94,10 @@ There is a [simple file server](https://github.com/robaho/httpserver/blob/727759
 gradle runSimpleFileServer
 ```
 
+## Websockets
+
+For websocket usage, see the examples in the [websocket testing folder](https://github.com/robaho/httpserver/tree/main/src/test/java/robaho/net/httpserver/websockets).
+
 ## logging
 
 All logging is performed using the [Java System Logger](https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/System.Logger.html)
