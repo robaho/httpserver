@@ -102,8 +102,10 @@ In general, create a handler that extends WebSocketHandler, and add an endpoint 
 
 ```
   HttpHandler h = new EchoWebSocketHandler();
-  HttpContext c = server.createContext(path, h);
+  HttpContext c = server.createContext("/ws", h);
 ```
+
+The low-level websocket api is [nanohttpd](https://github.com/NanoHttpd/nanohttpd) so there are many examples on the web.
 
 ## logging
 
