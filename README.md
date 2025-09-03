@@ -94,9 +94,16 @@ There is a [simple file server](https://github.com/robaho/httpserver/blob/727759
 gradle runSimpleFileServer
 ```
 
-## Websockets
+## websockets
 
 For websocket usage, see the examples in the [websocket testing folder](https://github.com/robaho/httpserver/tree/main/src/test/java/robaho/net/httpserver/websockets).
+
+In general, create a handler that extends WebSocketHandler, and add an endpoint for the handler:
+
+```
+  HttpHandler h = new EchoWebSocketHandler();
+  HttpContext c = server.createContext(path, h);
+```
 
 ## logging
 
