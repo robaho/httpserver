@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +24,8 @@ import robaho.net.httpserver.NoSyncBufferedOutputStream;
  * parse multipart form data
  */
 public class MultipartFormParser {
+    static final Logger logger = Logger.getLogger("robaho.net.httpserver.MultipartFormParser");
+
     /**
      * a multipart part.
      *
@@ -66,7 +69,8 @@ public class MultipartFormParser {
 
         List<String> headers = new LinkedList<>();
 
-        System.out.println("reading until start of part");
+        logger.finer(() -> "reading multipart form data with boundary '%s'".formatted(boundary));
+
         // read until boundary found
         int matchCount = 2; // starting at 2 allows matching non-compliant senders. rfc says CRLF is part of
                             // boundary marker
@@ -78,7 +82,6 @@ public class MultipartFormParser {
             if (c == boundaryCheck[matchCount]) {
                 matchCount++;
                 if (matchCount == boundaryCheck.length - 2) {
-                    System.out.println("found boundary marker");
                     break;
                 }
             } else {
@@ -99,7 +102,7 @@ public class MultipartFormParser {
 
         while (true) {
             // read part headers until blank line
-            System.out.println("reading part headers");
+
             while (true) {
                 s = readLine(charset, is);
                 if (s == null) {
@@ -111,7 +114,6 @@ public class MultipartFormParser {
                 headers.add(s);
             }
 
-            System.out.println("reading part data");
             // read part data - need to detect end of part
             PartMetadata meta = parseHeaders(headers);
 
@@ -138,7 +140,6 @@ public class MultipartFormParser {
                     if (c == boundaryCheck[matchCount]) {
                         matchCount++;
                         if (matchCount == boundaryCheck.length) {
-                            System.out.println("found boundary marker");
                             break;
                         }
                     } else {
