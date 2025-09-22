@@ -38,7 +38,7 @@ public class MultipartFormParser {
 
     }
 
-    private record PartMetadata(String name, String filename) {
+    private record PartMetadata(String contentType, String name, String filename) {
 
     }
 
@@ -120,12 +120,12 @@ public class MultipartFormParser {
             if (meta.filename == null) {
                 var bos = new ByteArrayOutputStream();
                 os = bos;
-                addToResults = () -> results.computeIfAbsent(meta.name, k -> new LinkedList<Part>()).add(new Part(null, null, bos.toString(charset), null));
+                addToResults = () -> results.computeIfAbsent(meta.name, k -> new LinkedList<Part>()).add(new Part(meta.contentType, null, bos.toString(charset), null));
             } else {
                 File file = Path.of(storage.toString(), meta.filename).toFile();
                 file.deleteOnExit();
                 os = new NoSyncBufferedOutputStream(new FileOutputStream(file));
-                addToResults = () -> results.computeIfAbsent(meta.name, k -> new LinkedList<Part>()).add(new Part(null, meta.filename, null, file));
+                addToResults = () -> results.computeIfAbsent(meta.name, k -> new LinkedList<Part>()).add(new Part(meta.contentType, meta.filename, null, file));
             }
 
             try (os) {
@@ -170,6 +170,7 @@ public class MultipartFormParser {
     private static PartMetadata parseHeaders(List<String> headers) {
         String name = null;
         String filename = null;
+        String contentType = null;
         for (var header : headers) {
             String[] parts = header.split(":", 2);
             if ("content-disposition".equalsIgnoreCase(parts[0])) {
@@ -188,9 +189,11 @@ public class MultipartFormParser {
                     }
                 }
 
+            } else if ("content-type".equalsIgnoreCase(parts[0])) {
+                contentType = parts[1].trim();
             }
         }
-        return new PartMetadata(name, filename);
+        return new PartMetadata(contentType, name, filename);
     }
 
     private static String readLine(Charset charset, InputStream is) throws IOException {
