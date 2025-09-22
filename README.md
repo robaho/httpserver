@@ -94,6 +94,19 @@ There is a [simple file server](https://github.com/robaho/httpserver/blob/727759
 gradle runSimpleFileServer
 ```
 
+## websockets
+
+For websocket usage, see the examples in the [websocket testing folder](https://github.com/robaho/httpserver/tree/main/src/test/java/robaho/net/httpserver/websockets).
+
+In general, create a handler that extends WebSocketHandler, and add an endpoint for the handler:
+
+```
+  HttpHandler h = new EchoWebSocketHandler();
+  HttpContext c = server.createContext("/ws", h);
+```
+
+The low-level websocket api is [nanohttpd](https://github.com/NanoHttpd/nanohttpd) so there are many examples on the web.
+
 ## logging
 
 All logging is performed using the [Java System Logger](https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/System.Logger.html)
