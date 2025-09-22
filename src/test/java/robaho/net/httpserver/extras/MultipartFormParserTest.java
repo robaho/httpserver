@@ -52,13 +52,16 @@ public class MultipartFormParserTest {
         s += "111Y\r\n";
         s += "111Z\rCCCC\nCCCC\r\nCCCCC@\r\n";
 
+        Assert.assertEquals(values.get(0).contentType(),"text/plain");
         Assert.assertEquals(s.getBytes("UTF-8"), Files.readAllBytes((values.get(0).file()).toPath()), "file1 failed");
+
 
         s = "\r\n";
         s += "@22X";
         s += "222Y\r\n";
         s += "222Z\r222W\n2220\r\n666@";
 
+        Assert.assertEquals(values.get(1).contentType(),"text/plain");
         Assert.assertEquals(s.getBytes("UTF-8"), Files.readAllBytes((values.get(1).file()).toPath()), "file2 failed");
     }
 
@@ -118,6 +121,7 @@ public class MultipartFormParserTest {
 
         Assert.assertEquals(results.size(), 1);
         List<Part> values = results.get("myfile");
+        Assert.assertEquals(values.get(0).contentType(), "text/plain");
         Assert.assertEquals(values.size(), 1);
     }
 
@@ -133,6 +137,12 @@ public class MultipartFormParserTest {
 
         Assert.assertEquals(results.size(), 2);
         List<Part> values = results.get("myfile");
+        Assert.assertEquals(values.get(0).contentType(), "text/plain");
         Assert.assertEquals(values.size(), 1);
+
+        values = results.get("myfile2");
+        Assert.assertEquals(values.get(0).contentType(), "image/png");
+        Assert.assertEquals(values.size(), 1);
+
     }
 }
