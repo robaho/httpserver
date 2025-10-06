@@ -242,9 +242,13 @@ class ExchangeImpl {
         boolean flush = false;
 
         /* check for response type that is not allowed to send a body */
-        if (rCode == 101) {
-            logger.log(Level.DEBUG, () -> "switching protocols");
-
+        var informational = rCode >= 100 && rCode < 200;
+        
+        if (informational) {
+        	
+        	if (rCode == 101) {
+                logger.log(Level.DEBUG, () -> "switching protocols");
+        	}
             if (contentLen != 0) {
                 String msg = "sendResponseHeaders: rCode = " + rCode
                         + ": forcing contentLen = 0";
@@ -253,8 +257,7 @@ class ExchangeImpl {
             contentLen = 0;
             flush = true;
 
-        } else if ((rCode >= 100 && rCode < 200) /* informational */
-                || (rCode == 204) /* no content */
+        } else if ((rCode == 204) /* no content */
                 || (rCode == 304)) /* not modified */
         {
             if (contentLen != -1) {
@@ -283,6 +286,9 @@ class ExchangeImpl {
                 if (websocket || isConnectRequest()) {
                     o.setWrappedStream(ros);
                     close = true;
+                    flush = true;
+                }
+                else if (informational) {
                     flush = true;
                 }
                 else if (http10) {
@@ -323,7 +329,7 @@ class ExchangeImpl {
 
         writeHeaders(rspHdrs, ros);
         this.rspContentLen = contentLen;
-        sentHeaders = true;
+        sentHeaders = !informational;
         if(logger.isLoggable(Level.TRACE)) {
             logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
         }
