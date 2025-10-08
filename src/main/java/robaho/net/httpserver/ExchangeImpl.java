@@ -40,8 +40,6 @@ import java.time.format.DateTimeFormatter;
 
 import com.sun.net.httpserver.*;
 
-import robaho.net.httpserver.websockets.WebSocketHandler;
-
 class ExchangeImpl {
 
     Headers reqHdrs, rspHdrs;
@@ -69,7 +67,8 @@ class ExchangeImpl {
 
     private static final String HEAD = "HEAD";
     private static final String CONNECT = "CONNECT";
-
+    private static final String HEADER_CONNECTION = "Connection";
+    private static final String HEADER_CONNECTION_UPGRADE = "Upgrade";  
     /*
      * streams which take care of the HTTP protocol framing
      * and are passed up to higher layers
@@ -85,7 +84,7 @@ class ExchangeImpl {
     Map<String, Object> attributes;
     int rcode = -1;
     HttpPrincipal principal;
-    final boolean websocket;
+    boolean connectionUpgraded = false;
 
     ExchangeImpl(
             String m, URI u, Request req, long len, HttpConnection connection) throws IOException {
@@ -97,11 +96,6 @@ class ExchangeImpl {
         this.method = m;
         this.uri = u;
         this.connection = connection;
-        this.websocket = WebSocketHandler.isWebsocketRequested(this.reqHdrs);
-        if (this.websocket) {
-            // length is indeterminate
-            len = -1;
-        }
         this.reqContentLen = len;
         /* ros only used for headers, body written directly to stream */
         this.ros = req.outputStream();
@@ -134,6 +128,9 @@ class ExchangeImpl {
 
     private boolean isConnectRequest() {
         return CONNECT.equals(getRequestMethod());
+    }
+    private boolean isUpgradeRequest() {
+        return HEADER_CONNECTION_UPGRADE.equalsIgnoreCase(reqHdrs.getFirst(HEADER_CONNECTION));
     }
 
     public void close() {
@@ -170,7 +167,7 @@ class ExchangeImpl {
         if (uis != null) {
             return uis;
         }
-        if (websocket || isConnectRequest()) {
+        if (connectionUpgraded || isConnectRequest() || isUpgradeRequest()) {
             // connection cannot be re-used
             uis = ris;
         } else if (reqContentLen == -1L) {
@@ -232,7 +229,6 @@ class ExchangeImpl {
         ros.write(statusLine.getBytes(ISO_CHARSET));
         boolean noContentToSend = false; // assume there is content
         boolean noContentLengthHeader = false; // must not send Content-length is set
-        rspHdrs.set("Date", ActivityTimer.dateAndTime());
 
         Integer bufferSize = (Integer)this.getAttribute(Attributes.SOCKET_WRITE_BUFFER);
         if(bufferSize!=null) {
@@ -245,18 +241,17 @@ class ExchangeImpl {
         var informational = rCode >= 100 && rCode < 200;
         
         if (informational) {
-        	
         	if (rCode == 101) {
                 logger.log(Level.DEBUG, () -> "switching protocols");
+                if (contentLen != 0) {
+                    String msg = "sendResponseHeaders: rCode = " + rCode
+                            + ": forcing contentLen = 0";
+                    logger.log(Level.WARNING, msg);
+                    contentLen = 0;
+                }
+                connectionUpgraded = true;
         	}
-            if (contentLen != 0) {
-                String msg = "sendResponseHeaders: rCode = " + rCode
-                        + ": forcing contentLen = 0";
-                logger.log(Level.WARNING, msg);
-            }
-            contentLen = 0;
-            flush = true;
-
+            noContentLengthHeader = true; // the Content-length header must not be set for interim responses as they cannot have a body
         } else if ((rCode == 204) /* no content */
                 || (rCode == 304)) /* not modified */
         {
@@ -267,6 +262,10 @@ class ExchangeImpl {
             }
             contentLen = -1;
             noContentLengthHeader = (rCode != 304);
+        }
+
+        if(!informational) {
+            rspHdrs.set("Date", ActivityTimer.dateAndTime());
         }
 
         if (isHeadRequest() || rCode == 304) {
@@ -281,14 +280,14 @@ class ExchangeImpl {
             noContentToSend = true;
             contentLen = 0;
             o.setWrappedStream(new FixedLengthOutputStream(this, ros, contentLen));
+        } else if(informational && !connectionUpgraded) {
+            // don't want to set the stream for 1xx responses, except 101, the handler must call sendResponseHeaders again with the final code
+            flush = true;
         } else { /* not a HEAD request or 304 response */
             if (contentLen == 0) {
-                if (websocket || isConnectRequest()) {
+                if (connectionUpgraded || isConnectRequest()) {
                     o.setWrappedStream(ros);
                     close = true;
-                    flush = true;
-                }
-                else if (informational) {
                     flush = true;
                 }
                 else if (http10) {
@@ -331,7 +330,7 @@ class ExchangeImpl {
         this.rspContentLen = contentLen;
         sentHeaders = !informational;
         if(logger.isLoggable(Level.TRACE)) {
-            logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
+            logger.log(Level.TRACE, "sendResponseHeaders(), code="+rCode+", noContentToSend=" + noContentToSend + ", contentLen=" + contentLen);
         }
         if(flush) {
             ros.flush();

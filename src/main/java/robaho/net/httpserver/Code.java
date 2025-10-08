@@ -28,6 +28,7 @@ package robaho.net.httpserver;
 public class Code {
 
   public static final int HTTP_CONTINUE = 100;
+  public static final int HTTP_SWITCHING_PROTOCOLS = 101;
   public static final int HTTP_OK = 200;
   public static final int HTTP_CREATED = 201;
   public static final int HTTP_ACCEPTED = 202;
@@ -71,6 +72,8 @@ public class Code {
         return " OK";
       case HTTP_CONTINUE:
         return " Continue";
+      case HTTP_SWITCHING_PROTOCOLS:
+        return " Switching Protocols";
       case HTTP_CREATED:
         return " Created";
       case HTTP_ACCEPTED:
