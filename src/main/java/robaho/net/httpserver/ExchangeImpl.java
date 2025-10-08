@@ -290,6 +290,7 @@ class ExchangeImpl {
                 }
                 else if (informational) {
                     flush = true;
+                    noContentLengthHeader = true;
                 }
                 else if (http10) {
                     o.setWrappedStream(new UndefLengthOutputStream(this, ros));
