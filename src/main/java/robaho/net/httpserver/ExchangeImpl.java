@@ -287,7 +287,7 @@ class ExchangeImpl {
             o.setWrappedStream(ros);
             close = true;
             flush = true;
-        } else { /* not a HEAD request or 304 response */
+        } else { /* standard response with possible response data */
             if (contentLen == 0) {
                 if (http10) {
                     o.setWrappedStream(new UndefLengthOutputStream(this, ros));
