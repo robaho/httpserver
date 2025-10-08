@@ -6,7 +6,7 @@ import java.time.format.TextStyle;
 import java.util.Locale;
 import java.util.TimerTask;
 
-class ActivityTimer {
+final class ActivityTimer {
     private static volatile long now = System.currentTimeMillis();
     private static volatile String dateAndTime = formatDate();
 
@@ -39,14 +39,14 @@ class ActivityTimer {
         return sb.toString();
     }
 
-    public static long now() {
+    static long now() {
         return now;
     }
     /**
      * return the formatted current date and time suitable for use with the Date http header. this
      * is OK to cache since the resolution is only seconds, and we will update more often than that
      */
-    public static String dateAndTime() {
+    static String dateAndTime() {
         return dateAndTime;
     }
 
