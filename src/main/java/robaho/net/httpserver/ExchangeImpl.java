@@ -283,14 +283,13 @@ class ExchangeImpl {
         } else if(informational && !connectionUpgraded) {
             // don't want to set the stream for 1xx responses, except 101, the handler must call sendResponseHeaders again with the final code
             flush = true;
+        } else if(connectionUpgraded || isConnectRequest()) {
+            o.setWrappedStream(ros);
+            close = true;
+            flush = true;
         } else { /* not a HEAD request or 304 response */
             if (contentLen == 0) {
-                if (connectionUpgraded || isConnectRequest()) {
-                    o.setWrappedStream(ros);
-                    close = true;
-                    flush = true;
-                }
-                else if (http10) {
+                if (http10) {
                     o.setWrappedStream(new UndefLengthOutputStream(this, ros));
                     close = true;
                 } else {
