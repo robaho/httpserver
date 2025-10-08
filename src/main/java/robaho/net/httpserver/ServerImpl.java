@@ -862,12 +862,17 @@ class ServerImpl {
                 builder.append("HTTP/1.1 ")
                         .append(code).append(Code.msg(code)).append("\r\n");
 
+                var informational = (code >= 100 && code < 200);
+
                 if (text != null && text.length() != 0) {
                     builder.append("Content-length: ")
                             .append(text.length()).append("\r\n")
                             .append("Content-type: text/html\r\n");
                 } else {
-                    builder.append("Content-length: 0\r\n");
+                    if (!informational) {
+                        // no body for 1xx responses
+                        builder.append("Content-length: 0\r\n");
+                    } 
                     text = "";
                 }
                 if (closeNow) {
@@ -898,7 +903,7 @@ class ServerImpl {
         } else {
             r = requestStr;
         }
-        logger.log(Level.DEBUG, () -> "reply "+ r + " [" + code + " " + Code.msg(code) + "] (" + (text!=null ? text : "") + ")");
+        logger.log(Level.DEBUG, () -> "reply "+ r + " [" + code + Code.msg(code) + "] (" + (text!=null ? text : "") + ")");
     }
 
     void delay() {

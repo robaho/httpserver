@@ -92,22 +92,15 @@ sourceSets {
     }
 }
 
-def getGitVersion () {
-    def output = new ByteArrayOutputStream()
-    exec {
-        commandLine 'git', 'rev-list', '--tags', '--max-count=1'
-        standardOutput = output
-    }
-    def revision = output.toString().trim()
-    output.reset()
-    exec {
-        commandLine 'git', 'describe', '--tags', revision
-        standardOutput = output
-    }
-    return output.toString().trim()
-}
+// Use a lazy Provider to get the git version. This is the modern, configuration-cache-friendly approach.
+def gitVersionProvider = project.providers.exec {
+    // 1. Describe the latest revision with a tag
+    commandLine = ['git', 'describe', '--tags', '--always']
+    ignoreExitValue = true // Don't fail the build if git fails (e.g., no tags exist)
+}.standardOutput.asText.map { it.trim() }
 
-version = getGitVersion()
+// Apply the git version to your project
+version = gitVersionProvider.get()
 
 task showGitVersion {
     doLast {
@@ -116,9 +109,6 @@ task showGitVersion {
 }
 
 build {
-    doFirst {
-        getGitVersion
-    }
 }
 
 jar {
@@ -181,16 +171,17 @@ task runSimpleFileServer(type: JavaExec) {
     }
     dependsOn testClasses
     classpath sourceSets.test.runtimeClasspath
-    main "SimpleFileServer"
+    
+    // FIX 1: Use 'mainClass' instead of 'main'
+    // FIX 2: Replace "SimpleFileServer" with the FULLY QUALIFIED class name
+    // (e.g., if it's in a package named com.example)
+    mainClass = "com.example.SimpleFileServer" 
+    
     args = ['fileserver','443','fileserver/logfile.txt']
-    // args = ['fileserver','8080','fileserver/logfile.txt']
-        javaLauncher = javaToolchains.launcherFor {
+    
+    javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(23)
     }
-    // debugOptions {
-    //     enabled = true
-    //     suspend = true
-    // }
 }
 
 task testJar(type: Jar) {
@@ -205,7 +196,7 @@ task runAllTests(type: Test) {
 }
 
 publish {
-    // dependsOn runAllTests
+    dependsOn runAllTests
 }
 
 publishing {
